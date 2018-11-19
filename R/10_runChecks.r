@@ -46,5 +46,5 @@ TAC[,ac(2015),1] - ((TAC[,ac(2014),1] / 1.1 - TAC[,ac(2014),1]) + (1.1 * HCRTAC[
 
 
 
-
+## check initial single/multi-fleet NSH.sam objects against those from HAWG2018
 

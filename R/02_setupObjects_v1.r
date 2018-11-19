@@ -1,66 +1,76 @@
 #-------------------------------------------------------------------------------
-# WKHELP
+# WKNSMSE2018
 #
 # Author: Niels Hintzen
 #         IMARES, The Netherland
 #
-# Performs an MSE of North Sea Herring under different TAC scenario's
+#  MSE of North Sea Herring
 #
-# Date: 05-Jun-2012
+# Date: 2018/11/18
 #
-# Build for R2.13.2, 32bits
+# Build for R3.4.3, 64bits
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+# WKNSMSE
+#
+# Author: Niels Hintzen
+#         IMARES, The Netherland
+#
+#  MSE of North Sea Herring
+#
+# Date: 2018/11/18
+#
+# Build for R3.4.3, 64bits
 #-------------------------------------------------------------------------------
 
 rm(list=ls())
 
 library(FLSAM)
-library(MASS)
-library(msm)
+library(FLEDA)
 
 #path          <- "D:/Work/Herring MSE/NSAS/"
-path          <- "W:/IMARES/Data/ICES-WG/WKHerTAC/NSAS/"
-inPath        <- paste(path,"Data/",sep="")
-codePath      <- paste(path,"R/",sep="")
-outPath       <- paste(path,"Results/",sep="")
-if(substr(R.Version()$os,1,3)== "lin"){
-  path        <- sub("W:/IMARES/Data/ICES-WG/","/media/w/",path)
-  inPath      <- sub("W:/IMARES/Data/ICES-WG/","/media/w/",inPath)
-  codePath    <- sub("W:/IMARES/Data/ICES-WG/","/media/w/",codePath)
-  outPath     <- sub("W:/IMARES/Data/ICES-WG/","/media/w/",outPath)
-}
+path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
+assessment_name   <- "NSAS_WKNSMSE2018"
+try(setwd(path),silent=TRUE)
+
+# paths to different subfolders
+dataPath      <- file.path(".","data/")
+outPath       <- file.path(".","results/")
+scriptPath    <- file.path(".","side_scripts/")
 
 #- Load objects
-load(file.path(inPath,"North Sea Herring.RData"))
-NSH.tun[[1]]  <- window(NSH.tun[[1]],end=2013)
-NSH.tun[[2]]  <- window(NSH.tun[[2]],end=2013)
-NSH.tun[[3]]  <- window(NSH.tun[[3]],end=2014)
-NSH.tun[[4]]  <- window(NSH.tun[[4]],end=2014)
-#load(file=paste(outPath,"NSH.RData",     sep=""))
-#load(file=paste(outPath,"NSHctrl.RData", sep=""))
-#load(file=paste(outPath,"NSHsam.RData",  sep=""))
-#load(file=paste(outPath,"NSHtun.RData",  sep=""))
+load(file.path(outPath,paste0(assessment_name,'_mf.Rdata')))
+load(file.path(outPath,paste0(assessment_name,'_sf.Rdata')))
 
 #- Settings
-histMinYr   <- 1947
-histMaxYr   <- 2013
-futureMaxYr <- histMaxYr + 27
+nyrs        <- 27
+histMinYr   <- dims(NSH)$minyear
+histMaxYr   <- dims(NSH)$maxyear
+futureMaxYr <- histMaxYr + nyrs
 histPeriod  <- ac(histMinYr:histMaxYr)
 projPeriod  <- ac((histMaxYr+1):futureMaxYr)
-recrPeriod  <- ac(2003:2013)
-selPeriod   <- ac(2003:2013)
-fecYears    <- ac(2003:2013)
-nyrs        <- futureMaxYr-dims(NSH)$maxyear
-nits        <- 1000
-settings    <- list(histMinYr=histMinYr,histMaxYr=histMaxYr,futureMaxYr=futureMaxYr,
-                    histPeriod=histPeriod,projPeriod=projPeriod,recrPeriod=recrPeriod,
-                    nyrs=nyrs,nits=nits,fecYears=fecYears)
+recrPeriod  <- ac(2007:2017)
+selPeriod   <- ac(2007:2017)
+fecYears    <- ac(2007:2017)
+niter        <- 1000
+settings    <- list(histMinYr=histMinYr,
+                    histMaxYr=histMaxYr,
+                    futureMaxYr=futureMaxYr,
+                    histPeriod=histPeriod,
+                    projPeriod=projPeriod,
+                    recrPeriod=recrPeriod,
+                    nyrs=nyrs,
+                    nits=nits,
+                    fecYears=fecYears)
 
 source(paste(codePath,"functions.r",sep=""))
 
   #-------------------------------------------------------------------------------
   # 0): Create stock object & use vcov for new realisations
   #-------------------------------------------------------------------------------
-stocks                            <- monteCarloStock(NSH,NSH.sam,nits,run.dir=outPath)
+stocks                            <- monteCarloStock(NSH,NSH.sam,niter) # function not working
+
 stocks                            <- window(window(stocks,end=histMaxYr+1),start=histMinYr,end=futureMaxYr)
 stocks@catch.n                    <- stocks@stock.n * stocks@harvest / (stocks@harvest + stocks@m) * (1 - exp(-stocks@harvest - stocks@m))
 stocks@catch.n[,ac(1978:1979)]    <- NA

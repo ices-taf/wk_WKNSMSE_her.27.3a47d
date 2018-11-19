@@ -1,56 +1,68 @@
 #-------------------------------------------------------------------------------
-# WKHELP
+# WKNSMSE
 #
 # Author: Niels Hintzen
 #         IMARES, The Netherland
 #
-# Performs an MSE of North Sea Herring under different TAC scenario's
+#  MSE of North Sea Herring
 #
-# Date: 05-Jun-2012
+# Date: 2018/11/18
 #
-# Build for R2.13.2, 32bits
+# Build for R3.4.3, 64bits
 #-------------------------------------------------------------------------------
 
 rm(list=ls())
 
-library(FLCore)
 library(FLSAM)
+library(FLEDA)
 
 #path          <- "D:/Work/Herring MSE/NSAS/"
-path          <- "W:/IMARES/Data/ICES-WG/WKHerTAC/NSAS/"
-inPath        <- paste(path,"Data/",sep="")
-codePath      <- paste(path,"R/",sep="")
-outPath       <- paste(path,"Results/",sep="")
-if(substr(R.Version()$os,1,3)== "lin"){
-  path        <- sub("W:/IMARES/Data/ICES-WG/","/media/w/",path)
-  inPath      <- sub("W:/IMARES/Data/ICES-WG/","/media/w/",inPath)
-  codePath    <- sub("W:/IMARES/Data/ICES-WG/","/media/w/",codePath)
-  outPath     <- sub("W:/IMARES/Data/ICES-WG/","/media/w/",outPath)
-}
+path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
+assessment_name   <- "NSAS_WKNSMSE2018"
+try(setwd(path),silent=TRUE)
 
-  #-------------------------------------------------------------------------------
-  # 0): Read 2010 data & setup assessment
-  #-------------------------------------------------------------------------------
+# paths to different subfolders
+dataPath      <- file.path(".","data/")
+outPath       <- file.path(".","results/")
+scriptPath    <- file.path(".","side_scripts/")
 
-#- Read NSH stock data + stock object fixes
-setwd(path)
-source(file.path(codePath,"setupAssessmentObjects.r"))
-source(file.path(codePath,"setupControlObject.r"))
+#-------------------------------------------------------------------------------
+# 0): multi-fleet assessment
+#-------------------------------------------------------------------------------
+
+source(file.path(scriptPath,"setupAssessmentObjects_mf.r"))
+source(file.path(scriptPath,"setupControlObject_mf.r"))
+
+NSH3f.sam   <- FLSAM(NSHs3,
+                     NSH.tun,
+                     NSH3.ctrl)
+
+# save assessment object
+save(NSHs3,
+     NSH.tun,
+     NSH3.ctrl,
+     NSH3f.sam,
+     file=file.path(outPath,paste0(assessment_name,'_mf.Rdata')))
+
+#-------------------------------------------------------------------------------
+# 0): Single fleet assessment
+#-------------------------------------------------------------------------------
+
+source(file.path(scriptPath,"setupAssessmentObjects_sf.r"))
+source(file.path(scriptPath,"setupControlObject_sf.r"))
 
 #- Perform the assessment
-NSH.sam       <- FLSAM(NSH,NSH.tun,NSH.ctrl)
-name(NSH.sam) <- "North Sea Herring"
+NSH.sam       <- FLSAM(NSH,
+                       NSH.tun,
+                       NSH.ctrl)
+name(NSH.sam) <- assessment_name
 
-#Update stock object
-NSH           <- NSH + NSH.sam
-NSH@stock     <- computeStock(NSH)
+NSH@stock.n           <- NSH.sam@stock.n[,ac(range(NSH)["minyear"]:range(NSH)["maxyear"])]
+NSH@harvest           <- NSH.sam@harvest[,ac(range(NSH)["minyear"]:range(NSH)["maxyear"])]
 
-  #-------------------------------------------------------------------------------
-  # 1): Save 2011 data
-  #-------------------------------------------------------------------------------
-
-save(NSH,       file=paste(outPath,"NSH.RData",     sep=""))
-save(NSH.ctrl,  file=paste(outPath,"NSHctrl.RData", sep=""))
-save(NSH.sam,   file=paste(outPath,"NSHsam.RData",  sep=""))
-save(NSH.tun,   file=paste(outPath,"NSHtun.RData",  sep=""))
-
+# save assessment object
+save(NSH,
+     NSH.tun,
+     NSH.ctrl,
+     NSH.sam,
+     file=file.path(outPath,paste0(assessment_name,'_sf.Rdata')))

@@ -1,0 +1,9 @@
+Autumn spawning herring in IV, VIId (13/Mar/2018 17:31)
+       1
+caton.txt
+canum.txt
+weca.txt
+west_raw.txt
+matprop.txt
+fprop.txt
+mprop.txt
