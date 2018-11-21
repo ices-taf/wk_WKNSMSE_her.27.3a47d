@@ -1,17 +1,4 @@
 #-------------------------------------------------------------------------------
-# WKNSMSE2018
-#
-# Author: Niels Hintzen
-#         IMARES, The Netherland
-#
-#  MSE of North Sea Herring
-#
-# Date: 2018/11/18
-#
-# Build for R3.4.3, 64bits
-#-------------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------
 # WKNSMSE
 #
 # Author: Niels Hintzen
@@ -30,7 +17,8 @@ library(FLSAM)
 library(FLEDA)
 
 #path          <- "D:/Work/Herring MSE/NSAS/"
-path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
+#path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
+path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -38,13 +26,20 @@ try(setwd(path),silent=TRUE)
 dataPath      <- file.path(".","data/")
 outPath       <- file.path(".","results/")
 scriptPath    <- file.path(".","side_scripts/")
+functionPath  <- file.path(".","functions/")
+
+source(file.path(functionPath,"randBlocks.R"))
+source(file.path(functionPath,"randNums.R"))
+
+#lapply(list.files(functionPath,pattern = "[.]R$", recursive = TRUE), source)
+
 
 #- Load objects
-load(file.path(outPath,paste0(assessment_name,'_mf.Rdata')))
+#load(file.path(outPath,paste0(assessment_name,'_mf.Rdata')))
 load(file.path(outPath,paste0(assessment_name,'_sf.Rdata')))
 
 #- Settings
-nyrs        <- 27
+nyrs        <- 20
 histMinYr   <- dims(NSH)$minyear
 histMaxYr   <- dims(NSH)$maxyear
 futureMaxYr <- histMaxYr + nyrs
@@ -53,7 +48,7 @@ projPeriod  <- ac((histMaxYr+1):futureMaxYr)
 recrPeriod  <- ac(2007:2017)
 selPeriod   <- ac(2007:2017)
 fecYears    <- ac(2007:2017)
-niter        <- 1000
+nits        <- 10
 settings    <- list(histMinYr=histMinYr,
                     histMaxYr=histMaxYr,
                     futureMaxYr=futureMaxYr,
@@ -64,98 +59,39 @@ settings    <- list(histMinYr=histMinYr,
                     nits=nits,
                     fecYears=fecYears)
 
-source(paste(codePath,"functions.r",sep=""))
+#-------------------------------------------------------------------------------
+# 1): Create stock object and fill fixed quantities
+#-------------------------------------------------------------------------------
+stocks                            <- monteCarloStock(NSH,NSH.tun,NSH.sam,nits) # simulate random samples
 
-  #-------------------------------------------------------------------------------
-  # 0): Create stock object & use vcov for new realisations
-  #-------------------------------------------------------------------------------
-stocks                            <- monteCarloStock(NSH,NSH.sam,niter) # function not working
-
-stocks                            <- window(window(stocks,end=histMaxYr+1),start=histMinYr,end=futureMaxYr)
-stocks@catch.n                    <- stocks@stock.n * stocks@harvest / (stocks@harvest + stocks@m) * (1 - exp(-stocks@harvest - stocks@m))
-stocks@catch.n[,ac(1978:1979)]    <- NA
+stocks                            <- window(window(stocks,end=histMaxYr+1),start=histMinYr,end=futureMaxYr) # extend the FLStock object to the full projection period
+stocks@catch.n                    <- stocks@stock.n * stocks@harvest / (stocks@harvest + stocks@m) * (1 - exp(-stocks@harvest - stocks@m)) # compute catch numbers 
+stocks@catch.n[,ac(1978:1979)]    <- NA # fill in Na for the the closure catch data
 stocks@landings.n                 <- stocks@catch.n
 
-stocks@harvest.spwn[,projPeriod]  <- stocks@harvest.spwn[,ac(histMaxYr)]
-stocks@m.spwn[,projPeriod]        <- stocks@m.spwn[,ac(histMaxYr)]
+stocks@harvest.spwn[,projPeriod]  <- stocks@harvest.spwn[,ac(histMaxYr)] # propagate Fprop before spawning
+stocks@m.spwn[,projPeriod]        <- stocks@m.spwn[,ac(histMaxYr)] # propagate Mprop before spawning
 
-#- Sample from selected year range to fill future time period of m, weight, fec and landings.wt
+#-------------------------------------------------------------------------------
+# 2): update stock object for maturity, stock weight at age and M
+#-------------------------------------------------------------------------------
+
+# having westa and mat on the same random chain swapping
+# M gets an independent random chain swapping
+
+#- Sample from selected year range to fill future time period for: m, weight, fec and landings.wt
 #  Retain a certain degree of auto-correlation and take fec, weight, m and landings
 #  weight from the same years to retain correlation between fec, wt, landings.wt
 #  and m (if there is any with m...)
 #  Take blocks of years instead of randomly years glued together. In some instances,
 #  reverse the blocks of year for variation
 
-  #- Take blocks of years, sample blocks from fecYears and add up till length of timeseries
-yrs       <- projPeriod
-saveBlcks <- matrix(NA,nrow=nits,ncol=length(yrs))
+# generate random blocks for weight at age and maturity
+saveBlcksYrs <- randBlocks(an(fecYears),an(projPeriod),nits)
 
-full      <- F
-rw        <- 1
-# replaced the version below because of occassional errors
-while(full==F){
-  tmpx <- 0
-  while(tmpx<1) {
-  set.seed(as.integer(Sys.time()))
-  sam   <- sample(1:length(fecYears),nits*1000,replace=T)
-  samM  <- matrix(sam,nrow=nits,ncol=1000)
-  idx   <- which(t(apply(samM,1,cumsum)) == length(yrs),arr.ind=T)
-  tmpx <- length(idx)
-  }
-  if((rw+nrow(idx) - 1) > nrow(saveBlcks)){ stprow <- nrow(saveBlcks); full <- T} else { stprow <- rw+nrow(idx) -1}
-  for(iRow in 1:(stprow-rw+1))
-    if ((rw+iRow-1) <= nrow(saveBlcks) && iRow>0) saveBlcks[(rw+iRow-1),1:idx[iRow,2]] <- samM[idx[iRow,1],1:idx[iRow,2]]
-  rw    <- stprow + 1
-}
-
-  #- Take the sampled blocks and assign years to it
-saveBlcksYrs <- array(NA,dim=c(nits,length(yrs),2),dimnames=list(nits=1:nits,blocks=1:length(yrs),strtstp=c("start","stop")))
-for(iCol in 1:ncol(saveBlcksYrs)){
-  #-saveBlcks - 1 because fecYears[1] is the first possible year
-  #-saveBlcks + 2 because rev(fecYears)[1] is the last possible year and correction for as.integer
-  #-If blck is reversed is decided afterwards, hence the tight bounds in runif
-  strstp  <- as.integer(runif(nits,an(fecYears[1])+saveBlcks[,iCol]-1,an(rev(fecYears)[1])-saveBlcks[,iCol]+2))
-  rv      <- sample(c(T,F),nits,replace=T)
-  strt    <- ifelse(rv==F,strstp,strstp-saveBlcks[,iCol]+1)
-  stp     <- strt + saveBlcks[,iCol] - 1
-  saveBlcksYrs[,iCol,"start"]       <- ifelse(rv==F,strt,stp)
-  saveBlcksYrs[,iCol,"stop"]        <- ifelse(rv==F,stp,strt)
-
-  #-Correct for those records where only one option in year is possible
-  idx     <- which((an(fecYears[1])+saveBlcks[,iCol]-1) == an(rev(fecYears)[1])-saveBlcks[,iCol]+2)
-  saveBlcksYrs[idx,iCol,"start"]    <- (an(fecYears[1])+saveBlcks[,iCol]-1)[idx]
-  saveBlcksYrs[idx,iCol,"stop"]     <- ifelse((saveBlcksYrs[idx,iCol,"start"] + saveBlcks[idx,iCol] - 1) > an(rev(fecYears)[1]),
-                                              (saveBlcksYrs[idx,iCol,"start"] - saveBlcks[idx,iCol] + 1),
-                                              (saveBlcksYrs[idx,iCol,"start"] + saveBlcks[idx,iCol] - 1))
-
-  #-add start-stop for those blocks equal to length(fecYears)
-  idx     <- which(saveBlcks[,iCol] == length(fecYears))
-  if(length(idx) > 0){
-    saveBlcksYrs[idx,iCol,"start"]  <- ifelse(rv[idx]==F,an(fecYears[1]),an(rev(fecYears)[1]))
-    saveBlcksYrs[idx,iCol,"stop"]   <- ifelse(rv[idx]==F,an(rev(fecYears)[1]),an(fecYears[1]))
-  }
-
-  #-If block is large, sampled size might exceed bounds, so take only possible options
-  if(length(idx) > 0) idx           <- which(is.na(strstp)==T & is.na(saveBlcks[,iCol])==F)[which(!which(is.na(strstp)==T &
-                                                                                                         is.na(saveBlcks[,iCol])==F) %in% idx)]
-  if(length(idx) == 0)idx           <- which(is.na(strstp)==T & is.na(saveBlcks[,iCol])==F)
-  if(length(idx) > 0){
-    #-Calculate options that are possible
-    opts                      <- mapply(function(strt,stp){
-                                        return(fecYears[which(!fecYears %in% strt:stp)])},
-                                        strt=an(rev(fecYears)[1])-saveBlcks[idx,iCol]+2,
-                                        stp =an(fecYears[1])     +saveBlcks[idx,iCol]-2,SIMPLIFY=F)
-    #-Sample from those options and define start and stop points
-    res     <- an(unlist(lapply(opts,sample,1)))
-    saveBlcksYrs[idx,iCol,"start"]  <- res
-    saveBlcksYrs[idx,iCol,"stop"]   <- ifelse((res + saveBlcks[idx,iCol] - 1) > an(rev(fecYears)[1]),
-                                               res - saveBlcks[idx,iCol] + 1,
-                                               res + saveBlcks[idx,iCol] - 1)
-  }
-}
-
-  #-Create year strings and bind them together
+#-Create year strings and bind them together
 yrStrngsIter<- apply(saveBlcksYrs,1,function(x){mapply(seq,from=na.omit(x[,1]),to=na.omit(x[,2]))})
+
 # if each sampled block was the same length, it creates a matrix instead of a list, gives an error below.
 # so added fix to change any matrices into lists first
 for (i in 1:nits) {
@@ -175,18 +111,17 @@ stocks@stock.wt [,projPeriod][]               <- array(iter(stocks@stock.wt,1)[,
 stocks@m        [,projPeriod][]               <- array(iter(stocks@m,1)       [,ac(yrStrngsC)],dim=dim(stocks@m       [,projPeriod]))
 
 
-  #-------------------------------------------------------------------------------
-  # 1): Create survey object & use vcov for new realisations + error on realisations
-  #-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+# 3): create variation in catchabilities for the different surveys
+#-------------------------------------------------------------------------------
 surveys           <- lapply(NSH.tun,propagate,iter=nits)
-for(iSurv in names(surveys)) surveys[[iSurv]] <- window(surveys[[iSurv]],start=range(surveys[[iSurv]])["minyear"],end=futureMaxYr)
+for(iSurv in names(surveys)){
+  surveys[[iSurv]] <- window(surveys[[iSurv]],start=range(surveys[[iSurv]])["minyear"],end=futureMaxYr)
+}
 dmns              <- dimnames(surveys[["HERAS"]]@index)
 dmns$year         <- dimnames(surveys[["SCAI"]]@index)$year
 dmns$unit         <- names(surveys)
 surv              <- FLQuant(NA,dimnames=dmns)
-
-  #- Get redrawn survey Qs and Ks
-load(file=paste(outPath,"random.param.RData",sep=""))
 
   #- Get the index of each parameter in the random.param object
 Qidx              <- unlist(apply(NSH.ctrl@catchabilities,1,function(x)c(na.omit(x))))
@@ -203,8 +138,6 @@ for(iSurv in names(surveys)) surveyK[[iSurv]][]         <- 1
 
 
   #- Fill the Qs by survey
-for(iYr in dimnames(surveyQ[["SCAI"]])$year)
-  surveyQ[["SCAI"]][,iYr]       <- exp(random.param[,which(colnames(random.param) == "logScaleSSB")])
 for(iYr in dimnames(surveyQ[["IBTS0"]])$year)
   surveyQ[["IBTS0"]][,iYr]      <- exp(random.param[,which(colnames(random.param) %in% "logFpar")[Qidx[grep("IBTS0",names(Qidx))]]])
 for(iYr in dimnames(surveyQ[["IBTS-Q1"]])$year)
@@ -276,16 +209,6 @@ for(iSurv in names(surveys)){
 
 
   #- Recalculate survey index values (also historic)
-SCAIfactor                                                                            <- c(exp(yearMeans(
-                                                                                               log(window(quantSums(stock.n(NSH)* exp(-NSH@harvest*harvest.spwn(NSH)-m(NSH)*m.spwn(NSH)) * stock.wt(NSH) *mat(NSH)),1972,histMaxYr) *
-                                                                                                   subset(catchabilities(NSH.sam),fleet=="SCAI")$value) -
-                                                                                               subset(residuals(NSH.sam),fleet=="SCAI")$log.mdl)))
-
-surveys[["SCAI"]]@index[,ac(range(surveys[["SCAI"]])["minyear"]:histMaxYr)]           <- sweep(quantSums(stock.n(stocks)    * exp(-stocks@harvest*harvest.spwn(stocks)-m(stocks)*m.spwn(stocks)) * stock.wt(stocks) *
-                                                                                               mat(stocks))[,ac(range(surveys[["SCAI"]])["minyear"]:histMaxYr)],
-                                                                                               c(2,6),  surveyK[["SCAI"]][,ac(range(surveys[["SCAI"]])["minyear"]:histMaxYr)],"^")            *
-                                                                                               surveyQ[["SCAI"]][,    ac(range(surveys[["SCAI"]])   ["minyear"]:histMaxYr)] * 1/SCAIfactor    * surv[1,      ac(range(surveys[["SCAI"]])    ["minyear"]:histMaxYr),"SCAI"]
-
 surveys[["IBTS0"]]@index[,ac(range(surveys[["IBTS0"]])["minyear"]:(histMaxYr+1))]     <- sweep((stock.n(stocks)["0",]       * exp(-stocks@harvest["0",] * mean(range(surveys[["IBTS0"]])  [c("startf","endf")]) -
                                                                                                m(stocks)["0",]  * mean(range(surveys[["IBTS0"]])   [c("startf","endf")])))[,ac(range(surveys[["IBTS0"]])["minyear"]:(histMaxYr+1))],
                                                                                                c(2,6),  surveyK[["IBTS0"]][,ac(range(surveys[["IBTS0"]])["minyear"]:(histMaxYr+1))],"^")      *
@@ -303,16 +226,17 @@ surveys[["HERAS"]]@index[,ac(range(surveys[["HERAS"]])["minyear"]:histMaxYr)]   
 surveys[["HERAS"]]@index[ac(1),ac(range(surveys[["HERAS"]])["minyear"]:1996)]         <- -1
 
 
-  #-------------------------------------------------------------------------------
-  #- 2): Use stock object + error on realisations
-  #-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#- 2): Use stock object + error on realisations
+#-------------------------------------------------------------------------------
 
+# create empty catch object
 dmns              <- dimnames(NSH@catch.n)
 dmns$year         <- dmns$year[1]:futureMaxYr
 dmns$iter         <- 1:nits
 ctch              <- FLQuant(NA,dimnames=dmns)
 
-  #- Take blocks of residuals, sample blocks from 1-10 and add up till length of timeseries
+#- Take blocks of residuals, sample blocks from 1-10 and add up till length of timeseries
 yrs       <- range(NSH)["minyear"]:futureMaxYr
 saveBlcks <- matrix(NA,nrow=nits,ncol=length(yrs))
 
@@ -346,7 +270,7 @@ for(iCol in 1:ncol(saveBlcksYrs)){
 }
 
   #- Substract and calculate residuals (non-standardized)
-Resids                                                        <- subset(residuals(NSH.sam),fleet=="catch")
+Resids                                                        <- subset(residuals(NSH.sam),fleet=="catch unique")
 iResids                                                       <- FLQuant(NA,dimnames=c(dimnames(stocks@stock.n)[1:5],iter="1"))
 
 for(i in 1:nrow(Resids))
@@ -367,6 +291,7 @@ stocks@catch.n    <- stocks@catch.n * ctch
 stocks@landings.n <- stocks@catch.n
 
 save.image(file.path(outPath,"catchSurveys.RData"))
+
   #-------------------------------------------------------------------------------
   #- 3): Perform starting point assessment + retrospective to measure assessment
   #      error
