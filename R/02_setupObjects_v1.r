@@ -15,6 +15,7 @@ rm(list=ls())
 
 library(FLSAM)
 library(FLEDA)
+library(R.utils) # package to load all function in directory
 
 #path          <- "D:/Work/Herring MSE/NSAS/"
 #path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
@@ -28,11 +29,7 @@ outPath       <- file.path(".","results/")
 scriptPath    <- file.path(".","side_scripts/")
 functionPath  <- file.path(".","functions/")
 
-source(file.path(functionPath,"randBlocks.R"))
-source(file.path(functionPath,"randNums.R"))
-
-#lapply(list.files(functionPath,pattern = "[.]R$", recursive = TRUE), source)
-
+sourceDirectory(functionPath) # loading function
 
 #- Load objects
 #load(file.path(outPath,paste0(assessment_name,'_mf.Rdata')))
@@ -59,9 +56,17 @@ settings    <- list(histMinYr=histMinYr,
                     nits=nits,
                     fecYears=fecYears)
 
+NSH.sim <- simulate(NSH,NSH.tun,NSH.ctrl,n=10)
+
 #-------------------------------------------------------------------------------
 # 1): Create stock object and fill fixed quantities
 #-------------------------------------------------------------------------------
+
+stocks                            <- monteCarloStock(	NSH,NSH.tun,NSH.sam,
+                                                      nits,
+                                                      return.sam=TRUE, 
+                                                      saveParsDir=file.path(outPath)) # simulate random samples
+
 stocks                            <- monteCarloStock(NSH,NSH.tun,NSH.sam,nits) # simulate random samples
 
 stocks                            <- window(window(stocks,end=histMaxYr+1),start=histMinYr,end=futureMaxYr) # extend the FLStock object to the full projection period
