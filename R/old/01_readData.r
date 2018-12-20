@@ -17,8 +17,8 @@ library(FLSAM)
 library(FLEDA)
 
 #path          <- "D:/Work/Herring MSE/NSAS/"
-path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
-#path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
+#path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
+path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -31,8 +31,8 @@ scriptPath    <- file.path(".","side_scripts/")
 # 0): multi-fleet assessment
 #-------------------------------------------------------------------------------
 
-source(file.path(scriptPath,"setupAssessmentObjects_mf_noLAI.r"))
-source(file.path(scriptPath,"setupControlObject_mf_noLAI.r"))
+source(file.path(scriptPath,"setupAssessmentObjects_mf.r"))
+source(file.path(scriptPath,"setupControlObject_mf.r"))
 
 NSH3f.sam   <- FLSAM(NSHs3,
                      NSH.tun,
@@ -43,14 +43,14 @@ save(NSHs3,
      NSH.tun,
      NSH3.ctrl,
      NSH3f.sam,
-     file=file.path(outPath,paste0(assessment_name,'_mf_noLAI.Rdata')))
+     file=file.path(outPath,paste0(assessment_name,'_mf.Rdata')))
 
 #-------------------------------------------------------------------------------
 # 0): Single fleet assessment
 #-------------------------------------------------------------------------------
 
-source(file.path(scriptPath,"setupAssessmentObjects_sf_noLAI.r"))
-source(file.path(scriptPath,"setupControlObject_sf_noLAI.r"))
+source(file.path(scriptPath,"setupAssessmentObjects_sf.r"))
+source(file.path(scriptPath,"setupControlObject_sf.r"))
 
 #- Perform the assessment
 NSH.sam       <- FLSAM(NSH,
@@ -66,4 +66,4 @@ save(NSH,
      NSH.tun,
      NSH.ctrl,
      NSH.sam,
-     file=file.path(outPath,paste0(assessment_name,'_sf_noLAI.Rdata')))
+     file=file.path(outPath,paste0(assessment_name,'_sf.Rdata')))

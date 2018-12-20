@@ -40,5 +40,20 @@ randBlocks <- function(fecYears,projPeriod,nits){
     }
   }
   
-  return(saveBlcksYrs)
+  #-Create year strings and bind them together
+  yrStrngsIter <- apply(saveBlcksYrs,1,function(x){mapply(seq,from=na.omit(x[,1]),to=na.omit(x[,2]))})
+  
+  # if each sampled block was the same length, it creates a matrix instead of a list, gives an error below.
+  # so added fix to change any matrices into lists first
+  for (i in 1:nits) {
+    if (!is.list(yrStrngsIter[[i]]))  {
+      tmp <- list()
+      for (cC in 1:ncol(yrStrngsIter[[i]])) tmp[[cC]]<- yrStrngsIter[[i]][,cC]
+      yrStrngsIter[[i]] <- tmp   
+      rm(tmp)
+    } 
+  }
+  yrStrngs    <- lapply(yrStrngsIter,function(x){do.call(c,x)})
+  
+  return(yrStrngs)
 }
