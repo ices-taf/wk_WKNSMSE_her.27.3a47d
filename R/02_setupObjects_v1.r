@@ -126,6 +126,8 @@ for(idxIter in 1:nits){
 # number of years in the chain
 # start year in the chain
 # reversing of the chain
+#
+# Note: M is from raw_M, not the M (smoothed) from the assessment
 #-------------------------------------------------------------------------------
 
 # generate random blocks for weight at age and maturity
@@ -151,8 +153,9 @@ for(idxIter in 1:nits){
   stocks[[idxIter]]@stock.wt [,projPeriod][]               <- array(stocks[[idxIter]]@stock.wt[,ac(yrChain[[idxIter]])],
                                                                     dim=dim(stocks[[idxIter]]@stock.wt[,projPeriod]))
   # future natural mortality at age
-  stocks[[idxIter]]@m        [,projPeriod][]               <- array(stocks[[idxIter]]@m[,ac(yrChainM[[idxIter]])],
+  stocks[[idxIter]]@m        [,projPeriod][]               <- array(raw_M[,ac(yrChainM[[idxIter]])],
                                                                     dim=dim(stocks[[idxIter]]@m[,projPeriod]))
+
   # multi fleet catch weight at age
   multiFleet_catch.wt[,projPeriod,,idxIter] <- drop(NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]])])[,1:length(projPeriod),]
 }
@@ -179,10 +182,33 @@ for(idxIter in 1:nits){
 surveys     <- lapply(NSH.tun,propagate,iter=nits)
 surveys     <- window(window(surveys,end=histMaxYr+1),start=histMinYr,end=futureMaxYr) # extend the FLStock object to the full projection period
 
+# initialize array to store catchabilities
+temp        <- catchabilities(NSH.sim[[idxIter]])
+qMat        <- array(NA,
+                     dim=c(dim(temp)[1],
+                           2,
+                           nits),
+                     dimnames=list('fleet' = temp$fleet,
+                                   'var' = c('ages','value')))
+# initialize array to store observation variance for surveys
+temp        <- obs.var(NSH.sim[[idxIter]]) # getting observation variance from SAM object for the current iteration
+temp        <- subset(temp, temp$fleet != 'catch unique') # subset observation variance
+varSurvMat  <- array(NA,
+                     dim=c(dim(temp)[1],
+                           2,
+                           nits),
+                     dimnames=list('fleet' = temp$fleet,
+                                   'var' = c('ages','value')))
+
 for(idxIter in 1:nits){
   
   sdAll <- obs.var(NSH.sim[[idxIter]]) # getting observation variance from SAM object for the current iteration
   qAll  <- catchabilities(NSH.sim[[idxIter]]) # getting catchabilities from SAM object for the current iteration
+  qMat[,1,idxIter]  <- qAll$age
+  qMat[,2,idxIter]  <- qAll$value
+  
+  varSurvMat[,1,idxIter] <- subset(sdAll, sdAll$fleet != 'catch unique')$age
+  varSurvMat[,2,idxIter] <- subset(sdAll, sdAll$fleet != 'catch unique')$value
   
   surveyNames <- as.character(unique(qAll$fleet)) # get all the survey names
   
@@ -221,8 +247,9 @@ for(idxIter in 1:nits){
     surveyProp  <- mean(c(NSH.tun[[surveyNames[idxSurvey]]]@range[6],NSH.tun[[surveyNames[idxSurvey]]]@range[7]))
     
     # update survey object
-    surveys[[surveyNames[idxSurvey]]]@index[,match(as.character(yearCurrentSurvey),colnames(stocks[[idxIter]]@stock.n)) # filling only the years available for the survey
-                                            ,1,1,1,idxIter] <- as.matrix(replicate(length(yearCurrentSurvey), qSelect$value)*exp(-Z*surveyProp)*NSelect*exp(resi))
+    surveys[[surveyNames[idxSurvey]]]@index[,match(as.character(yearCurrentSurvey),colnames(surveys[[surveyNames[idxSurvey]]]@index)) # filling only the years available for the survey
+                                            ,,,,idxIter] <- as.matrix(replicate(length(yearCurrentSurvey), qSelect$value)*exp(-Z*surveyProp)*NSelect*exp(resi))
+    surveys[[surveyNames[idxSurvey]]] <- surveys[[surveyNames[idxSurvey]]][,ac(minYearSurvey:futureMaxYr)]
   }
 }
 
@@ -256,11 +283,24 @@ for(idxIter in 1:nits){
 # assessment
 #-------------------------------------------------------------------------------
 
+# initialize array to store observation variance
+temp        <- obs.var(NSH.sim[[idxIter]]) # getting observation variance from SAM object for the current iteration
+temp        <- subset(temp, temp$fleet == 'catch unique') # subset observation variance
+varCatchMat <- array(NA,
+                     dim=c(dim(temp)[1],
+                           2,
+                           nits),
+                     dimnames=list('fleet' = temp$fleet,
+                                   'var' = c('ages','value')))
+
 # looping through all random samples
 for(idxIter in 1:nits){
   
   sdAll     <- obs.var(NSH.sim[[idxIter]]) # getting observation variance from SAM object for the current iteration
   sdSelect  <- subset(sdAll, sdAll$fleet == 'catch unique') # subset observation variance
+  
+  varCatchMat[,1,idxIter] <- sdSelect$age
+  varCatchMat[,2,idxIter] <- sdSelect$value
   
   resi              <- array(0, dim=c(dim(sdSelect)[1],length(yearCurrent))) # initialize array nAges x nYears
   colnames(resi)    <- yearCurrent
@@ -491,7 +531,11 @@ save(stocks,
      FCPropIts,
      fisheryFuture,
      NSH.sim,
-     file=file.path(outPath,paste0(assessment_name,'_init_MSE.RData'))) # need to include Fsel
+     NSH.ctrl,
+     qMat,
+     varCatchMat,
+     varSurvMat,
+     file=file.path(outPath,paste0(assessment_name,'_init_MSE.RData')))
 
 # save parameters
 save(n.retro.years, 
@@ -507,7 +551,7 @@ save(n.retro.years,
      selPeriod,
      fecYears,
      nits,
-     file=file.path(outPath,paste0(assessment_name,'_parameters_MSE.RData'))) # need to include Fsel
+     file=file.path(outPath,paste0(assessment_name,'_parameters_MSE.RData')))
 
 
 #-------------------------------------------------------------------------------

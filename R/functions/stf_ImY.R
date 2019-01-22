@@ -81,14 +81,19 @@ stf_ImY      <- function(NSH.sim,
   ############# update stf object #############
   
   # update F
-  stf@harvest[,ImY,'A'] <- t(apply(fisheryFuture[,ImY,'A','sel'],1,'*',Fscalor[1,]))
-  stf@harvest[,ImY,'B'] <- t(apply(fisheryFuture[,ImY,'BD','sel'],1,'*',Fscalor[2,]))
-  stf@harvest[,ImY,'C'] <- t(apply(fisheryFuture[,ImY,'C','sel'],1,'*',Fscalor[3,]))
-  stf@harvest[,ImY,'D'] <- t(apply(fisheryFuture[,ImY,'BD','sel'],1,'*',Fscalor[4,]))
+  #stf@harvest[,ImY,'A'] <- t(apply(fisheryFuture[,ImY,'A','sel'],1,'*',Fscalor[1,]))
+  #stf@harvest[,ImY,'B'] <- t(apply(fisheryFuture[,ImY,'BD','sel'],1,'*',Fscalor[2,]))
+  #stf@harvest[,ImY,'C'] <- t(apply(fisheryFuture[,ImY,'C','sel'],1,'*',Fscalor[3,]))
+  #stf@harvest[,ImY,'D'] <- t(apply(fisheryFuture[,ImY,'BD','sel'],1,'*',Fscalor[4,]))
   
   
   # compute stock.n, catch.n and landing.n
   for(idxIter in 1:nits){
+    stf@harvest[,ImY,'A',,,idxIter] <- fisheryFuture[,ImY,'A','sel',,idxIter]*Fscalor[1,idxIter]
+    stf@harvest[,ImY,'B',,,idxIter] <- fisheryFuture[,ImY,'BD','sel',,idxIter]*Fscalor[2,idxIter]
+    stf@harvest[,ImY,'C',,,idxIter] <- fisheryFuture[,ImY,'C','sel',,idxIter]*Fscalor[3,idxIter]
+    stf@harvest[,ImY,'D',,,idxIter] <- fisheryFuture[,ImY,'BD','sel',,idxIter]*Fscalor[4,idxIter]
+    
     Z <-  rowSums(drop(stf@harvest[,ImY,,,,idxIter])) + # sum accross the fleets
           drop(stf[,ImY,1,,,idxIter]@m) # M is the same for all fleets in the stf object
 
@@ -100,8 +105,8 @@ stf_ImY      <- function(NSH.sim,
     
     for(idxFleet in 1:nFleets){  
       stf@catch.n[,ImY,idxFleet,,,idxIter]     <-  stf@stock.n[,ImY,idxFleet,,,idxIter]*
-                                                    (1-exp(-Z))*
-                                                    stf@harvest[,ImY,idxFleet,,,idxIter]/Z
+                                                   (1-exp(-Z))*
+                                                   stf@harvest[,ImY,idxFleet,,,idxIter]/Z
       stf@catch[,ImY,idxFleet,,,idxIter]       <- computeCatch(stf[,ImY,idxFleet,,,idxIter])
       stf@landings.n[,ImY,idxFleet,,,idxIter]  <- stf@catch.n[,ImY,idxFleet,,,idxIter]
       stf@landings[,ImY,idxFleet,,,idxIter]    <- computeLandings(stf[,ImY,idxFleet,,,idxIter])
