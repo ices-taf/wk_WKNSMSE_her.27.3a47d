@@ -23,6 +23,7 @@ rm(list=ls())
 library(FLSAM)
 library(FLEDA)
 library(minpack.lm)  # install.packages("minpack.lm")
+library(stats)
 
 # define path to directory
 #path          <- "D:/Work/Herring MSE/NSAS/"
@@ -180,16 +181,22 @@ for (iYr in an(projPeriod)){
                         (1:length(varCatchMat[,2,idxIter]))*0, 
                         varCatchMat[,2,idxIter]) # residual to add to the catch
     
+    # catches = landings + deviation
     stocks[[idxIter]]@catch.n[,iYr]  <- rowSums(stf@catch.n[,iYr,,,,idxIter])*exp(resiCatch)
-    stocks[[idxIter]]@catch[,iYr]    <- sum( rowSums(stf@catch.n[,iYr,,,,idxIter]* # catch.n per fleet
-                                                          stf[,iYr,,,,idxIter]@catch.wt)* # catch.wt per fleet
-                                                  exp(resiCatch)) # sum catches accross fleets
-    stocks[[idxIter]]@catch.wt[,iYr] <- apply(drop(fisheryFuture[,iYr,,'catch.wt',,1]),1,mean) # weight at age as mean accross the fleets
+    stocks[[idxIter]]@catch.wt[,iYr] <- apply(drop(fisheryFuture[,iYr,,'catch.wt',,1]),1,mean)
+    stocks[[idxIter]]@catch          <- computeCatch(stocks[[idxIter]])
+    #stocks[[idxIter]]@catch[,iYr]    <- sum(stocks[[idxIter]]@catch.n[,iYr]*
+    #                                        apply(drop(fisheryFuture[,iYr,,'catch.wt',,1]),1,mean))
+    #stocks[[idxIter]]@catch[,iYr]    <- sum( rowSums(stf@catch.n[,iYr,,,,idxIter]* # catch.n per fleet
+    #                                                      stf[,iYr,,,,idxIter]@catch.wt)* # catch.wt per fleet
+    #                                              exp(resiCatch)) # sum catches accross fleets
+    #stocks[[idxIter]]@catch.wt[,iYr] <- stocks[[idxIter]]@catch.n[,iYr]/stocks[[idxIter]]@catch[,iYr]
+    #stocks[[idxIter]]@catch.wt[,iYr] <- apply(drop(fisheryFuture[,iYr,,'catch.wt',,1]),1,mean) # weight at age as mean accross the fleets
     
-    # landings = catches + deviation
-    stocks[[idxIter]]@landings[,iYr]          <- sum(stf@catch[,iYr,,,,idxIter])
+    
     stocks[[idxIter]]@landings.n[,iYr]        <- rowSums(stf@catch.n[,iYr,,,,idxIter])
-    stocks[[idxIter]]@landings.wt[,iYr]       <- apply(drop(fisheryFuture[,iYr,,'catch.wt',,1]),1,mean) # this is not relevant as catch weights are multi-fleet
+    stocks[[idxIter]]@landings.wt[,iYr]       <- apply(drop(fisheryFuture[,iYr,,'catch.wt',,1]),1,mean)
+    stocks[[idxIter]]@catch                   <- computeLandings(stocks[[idxIter]])
     
     stocks[[idxIter]]@stock.n[,iYr]           <- stf@stock.n[,iYr,1,,,idxIter]
     
@@ -234,6 +241,11 @@ for (iYr in an(projPeriod)){
                     start=an(fullPeriod[1]),
                     end=an(iYr))
     
+    # run a 7 years median filter to prevent any big discontinuity in M
+    for(idxAge in dimnames(NSH@m)$age){
+      NSH@m[idxAge,] <- runmed(NSH@m[idxAge,],k=7)
+    }
+    
     NSH.tun <- surveys
     
     for(idxSurvey in 1:length(surveys)){
@@ -241,7 +253,7 @@ for (iYr in an(projPeriod)){
     }
     NSH.ctrl@range[5] <- an(iYr)
     
-    NSH.sam <- FLSAM(NSH,NSH.tun,NSH.ctrl)
+    NSH.sim[[idxIter]] <- FLSAM(NSH,NSH.tun,NSH.ctrl)
   }
   
   cat("\n Finished stock assessment \n")

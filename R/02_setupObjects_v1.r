@@ -90,6 +90,7 @@ NSHM2@m[]         <- as.matrix(raw_M)
 pg                <- NSH@range['max']
 NSHM2             <- setPlusGroup(NSHM2,pg) # really wonder if the setPlusGroup does anything... Needs clarifying.
 raw_M             <- drop(NSHM2@m)
+raw_M             <- raw_M + 0.11
   
 #-------------------------------------------------------------------------------
 # 3) create random samples using variance/covariance matrix
