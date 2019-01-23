@@ -251,6 +251,9 @@ for(idxIter in 1:nits){
     surveys[[surveyNames[idxSurvey]]]@index[,match(as.character(yearCurrentSurvey),colnames(surveys[[surveyNames[idxSurvey]]]@index)) # filling only the years available for the survey
                                             ,,,,idxIter] <- as.matrix(replicate(length(yearCurrentSurvey), qSelect$value)*exp(-Z*surveyProp)*NSelect*exp(resi))
     surveys[[surveyNames[idxSurvey]]] <- surveys[[surveyNames[idxSurvey]]][,ac(minYearSurvey:futureMaxYr)]
+    
+    if(surveyNames[idxSurvey] == 'HERAS')
+      surveys[[surveyNames[idxSurvey]]]@index[,1:8] <- -1
   }
 }
 
@@ -324,14 +327,17 @@ for(idxIter in 1:nits){
   # catches, with added error based on observation variance
   stocks[[idxIter]]@catch.n[,match(as.character(yearCurrent),colnames(stocks[[idxIter]]@stock.n))] <-  # filter only the current years
                                                                                                       FSelect/Z*(1-exp(-Z))*NSelect*exp(resi)
+  
+  stocks[[idxIter]]@catch <- computeCatch(stocks[[idxIter]])
   #We don't believe the closure catch data, so put it to NA
   stocks[[idxIter]]@catch.n[,ac(1978:1979)]           <- NA
   
   # landings, i.e. here modelled as catches without error
   stocks[[idxIter]]@landings.n[,match(as.character(yearCurrent),colnames(stocks[[idxIter]]@stock.n))] <-  # filter only the current years
                                                                                                       FSelect/Z*(1-exp(-Z))*NSelect
+  stocks[[idxIter]]@landings <- computeLandings(stocks[[idxIter]])
   #We don't believe the closure catch data, so put it to NA
-  stocks[[idxIter]]@landings.n[,ac(1978:1979)]           <- NA
+  #stocks[[idxIter]]@landings.n[,ac(1978:1979)]           <- NA
 }
 
 # plotting the catches
@@ -348,6 +354,26 @@ for(idxIter in 1:nits){
   lines(years,b,col='green')
 }
 }
+
+#### Test assessment 
+
+#NSH.ctrl@residuals <- F
+#iYr <- '2017'
+#NSH.ctrl@range[5] <- an(iYr)
+
+#for(idxIter in 1:nits){
+#NSH2 <- window(stocks[[idxIter]],
+#               start=an(fullPeriod[1]),
+#               end=an(iYr))
+
+#NSH.tun2 <- surveys
+
+#for(idxSurvey in 1:length(NSH.tun2)){
+#  NSH.tun2[[idxSurvey]] <- window(NSH.tun2[[idxSurvey]][,,,,,idxIter],
+#                                  start=an(fullPeriod[1]),
+#                                  end=an(iYr))}
+
+#NSH.sim[[idxIter]] <- FLSAM(NSH2,NSH.tun2,NSH.ctrl)}
 
 #-------------------------------------------------------------------------------
 # 8) C fleet: proportion of F of the C fleet for the future years

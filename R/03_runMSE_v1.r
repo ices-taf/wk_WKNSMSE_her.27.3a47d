@@ -235,25 +235,34 @@ for (iYr in an(projPeriod)){
   #-------------------------------------------------------------------------------
   # Assessment
   #-------------------------------------------------------------------------------
+  iYr <- '2018'
+  NSH.ctrl@range[5] <- an(iYr)
+  NSH.ctrl@residuals <- F
   
   for(idxIter in 1:nits){
-    NSH <- window(  stocks[[idxIter]],
+    NSH2 <- window(  stocks[[idxIter]],
                     start=an(fullPeriod[1]),
                     end=an(iYr))
     
     # run a 7 years median filter to prevent any big discontinuity in M
-    for(idxAge in dimnames(NSH@m)$age){
-      NSH@m[idxAge,] <- runmed(NSH@m[idxAge,],k=7)
-    }
+    #for(idxAge in dimnames(NSH2@m)$age){
+    #  NSH2@m[idxAge,] <- runmed(NSH2@m[idxAge,],k=11)
+    #  NSH2@stock.wt[idxAge,] <- runmed(NSH2@stock.wt[idxAge,],k=11)
+    #  NSH2@mat[idxAge,] <- runmed(NSH2@mat[idxAge,],k=11)
+    #}
     
-    NSH.tun <- surveys
+    NSH.tun2 <- surveys
     
     for(idxSurvey in 1:length(surveys)){
-      NSH.tun[[idxSurvey]] <- NSH.tun[[idxSurvey]][,ac(surveys[[idxSurvey]]@range[4]:an(iYr)),,,,idxIter]
+      minYearSurvey     <- min(as.numeric(colnames(NSH.tun2[[surveyNames[idxSurvey]]]@index)))
+      NSH.tun2[[idxSurvey]] <- window( NSH.tun2[[idxSurvey]][,,,,,idxIter],
+                                      start=minYearSurvey,
+                                      end=an(iYr))
+      NSH.tun2[[idxSurvey]]@effort[,iYr] <- 1
+      NSH.tun2[[idxSurvey]]@catch.n <- NSH.tun2[[idxSurvey]]@index
     }
-    NSH.ctrl@range[5] <- an(iYr)
-    
-    NSH.sim[[idxIter]] <- FLSAM(NSH,NSH.tun,NSH.ctrl)
+
+    NSH.sim[[idxIter]] <- FLSAM(NSH2,NSH.tun2,NSH.ctrl)
   }
   
   cat("\n Finished stock assessment \n")
