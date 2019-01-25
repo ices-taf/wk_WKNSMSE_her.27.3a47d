@@ -9,7 +9,6 @@ outPath       <- file.path(".","results/")
 # 2) stock and tuning random sample objects (stocks and surveys)
 load(file.path(outPath,'test.RData'))
 
-
 #------------------------------------------------------------------------------#
 # Test 1: running FLSAM the initial assessment objects. This works fine
 #------------------------------------------------------------------------------#
@@ -36,6 +35,9 @@ idxIter <- 2
 NSH_test <- window(  stocks[[idxIter]],
                      start=1947,
                      end=an(iYr))
+
+plot(stocks[[1]]@landings.wt,scales=list(y='free'),type='l')
+plot(NSH_test@catch.wt,scales=list(y='free'),type='l')
 
 NSH.tun_test <- surveys
 
@@ -115,3 +117,5 @@ res3 <- FLSAM(NSH_test,NSH.tun,NSH.ctrl)
 
 warnings() # show warnings
 assign("last.warning", NULL, envir = baseenv()) # clear warnings
+
+

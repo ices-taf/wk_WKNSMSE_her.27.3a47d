@@ -153,12 +153,21 @@ for(idxIter in 1:nits){
   # future weight at age
   stocks[[idxIter]]@stock.wt [,projPeriod][]               <- array(stocks[[idxIter]]@stock.wt[,ac(yrChain[[idxIter]])],
                                                                     dim=dim(stocks[[idxIter]]@stock.wt[,projPeriod]))
-  # future natural mortality at age
-  stocks[[idxIter]]@m        [,projPeriod][]               <- array(raw_M[,ac(yrChainM[[idxIter]])],
-                                                                    dim=dim(stocks[[idxIter]]@m[,projPeriod]))
+  
+  # future catch weight at age
+  stocks[[idxIter]]@catch.wt [,projPeriod][]               <- array(stocks[[idxIter]]@catch.wt[,ac(yrChain[[idxIter]])],
+                                                                    dim=dim(stocks[[idxIter]]@catch.wt[,projPeriod]))
+  
+  # future catch weight at age
+  stocks[[idxIter]]@landings.wt [,projPeriod][]             <- array(stocks[[idxIter]]@landings.wt[,ac(yrChain[[idxIter]])],
+                                                                    dim=dim(stocks[[idxIter]]@landings.wt[,projPeriod]))
 
   # multi fleet catch weight at age
   multiFleet_catch.wt[,projPeriod,,idxIter] <- drop(NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]])])[,1:length(projPeriod),]
+  
+  # future natural mortality at age, on a different block chain
+  stocks[[idxIter]]@m        [,projPeriod][]               <- array(raw_M[,ac(yrChainM[[idxIter]])],
+                                                                    dim=dim(stocks[[idxIter]]@m[,projPeriod]))
 }
 
 #-------------------------------------------------------------------------------
