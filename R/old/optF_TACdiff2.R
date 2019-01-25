@@ -9,9 +9,10 @@
 # for this fleet, a proportion of F is used for forecast
 # Note 3: fleet B and D are combined as they examplify the same selectivity patterns
 
-optF_TACdiff      <- function( mult,         # scalor 4x1
-                               catch.wt_mf,   # catch weight at age single fleet
-                               stock.n_sf,  # stock number single fleet
+optF_TACdiff2      <- function( mult,         # scalor 4x1
+                               harvest_sf,   # single fleet FLStock object
+                               catch.wt_mf,   # stock number single fleet
+                               stock.n_sf,  # catch weight at age single fleet
                                M,            # natural mortality
                                Fsel,         # selectivity stored as FLQuant object. Normalized between 0 and 1.
                                iYr,          # year of interest
@@ -22,7 +23,7 @@ optF_TACdiff      <- function( mult,         # scalor 4x1
   
   # start fun
   nFleets  <- dim(TACs)[5] # 4 fleets, A, B. C and D
-  nAges    <- dim(stock.n_sf)[1]
+  nAges    <- dim(harvest_sf[,iYr])[1]
   strFleet <- c('A','B','C', 'D')
   
   # compute new F using 1 scalor across ages for each fleet
@@ -35,10 +36,10 @@ optF_TACdiff      <- function( mult,         # scalor 4x1
     }
   }
   
+  
   # compute Z using scaled Fs. Z = M+Ftot with Ftot = FA+FB+FC+FD.
   Z <-  rowSums(Ffleet) + # use single fleet F at age
-        drop(M[,iYr]) # M is fleet independent and all fleet fields are the same
-  
+    drop(M[,iYr]) # M is fleet independent and all fleet fields are the same
   
   # propagate stock number with Z
   survivors                 <- stock.n_sf[,ac(an(iYr)-1)]*exp(-Z)
@@ -61,8 +62,15 @@ optF_TACdiff      <- function( mult,         # scalor 4x1
   catchfleet <- colSums(catchfleet)
   
   # compute TAC at age for the C fleet from the proportion of F
-  TAC_C_IIIa <- rowSums(Ffleet)*FCProp[iYr]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*catch.wt_mf[,iYr,'C'])
-  TAC_C_IIIa <- sum(TAC_C_IIIa)
+  #TAC_C_IIIa <- harvest_sf[,iYr]*FCProp[iYr]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*catch.wt_mf[,iYr,'C'])
+  #print('salut')
+  a<- rowSums(Ffleet)*FCProp[iYr]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*catch.wt_mf[,iYr,'C'])
+  
+  TAC_C_IIIa <- harvest_sf[,iYr]*FCProp[iYr]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*catch.wt_mf[,iYr,'C'])
+  #TAC_C_IIIa <- rowSums(Ffleet)*FCProp[iYr]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*catch.wt_mf[,iYr,'C'])
+  # sum accross the ages
+  TAC_C_IIIa <- colSums(TAC_C_IIIa)
+  #TAC_C_IIIa <- sum(TAC_C_IIIa)
   
   
   # Fill TAC objects with data on expected catches in NS
@@ -73,7 +81,7 @@ optF_TACdiff      <- function( mult,         # scalor 4x1
   TACs['B'] <- TACs['B']*TAC_var['Buptake']
   TACs['D'] <- TACs['D']*TAC_var['Dsplit']*TAC_var['Duptake']
   
-
+  
   res <- sqrt((drop(TACs) - catchfleet)^2)
   return(res)
 }

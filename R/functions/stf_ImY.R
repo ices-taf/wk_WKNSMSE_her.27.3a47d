@@ -1,12 +1,11 @@
-stf_ImY      <- function(NSH.sim,
-                         stocks,
+stf_ImY      <- function(stocks,
                          fisheryFuture,
                          TAC,
                          TAC_var,
                          FCPropIts,
+                         recruit,
                          FuY){
   
-  DtY <- ac(an(FuY[1])-1)
   ImY <- FuY[1]
   FcY <- FuY[2]
   CtY <- FuY[3]
@@ -14,34 +13,28 @@ stf_ImY      <- function(NSH.sim,
   ############# initialize stf FLStock object #############
   dsc         <- "North Sea Herring"
   nam         <- "NSAS"
-  dms         <- dimnames(stocks[[1]]@m)
-  dms$year    <- ac((an(DtY)-2):an(CtY))
+  dms         <- dimnames(stocks@m)
+  dms$year    <- ac((an(ImY)-1):an(CtY))
   dms$unit    <- c("A","B","C","D")
-  dms$iter    <- 1:nits
   
   nAges       <- length(dms$age)
   nits        <- length(dms$iter)
   
   # Create the stf object 
   stf         <- FLStock(name=nam,desc=dsc,FLQuant(NA,dimnames=dms))
+  units(stf)  <- units(stocks)
   
-  for(idxIter in 1:nits){
-    for(idxFleet in dms$unit){
-      # update stf object with current stock object
-      stf[,,idxFleet,,,idxIter]          <- window( stocks[[idxIter]],
-                                                    start=an(dms$year)[1],
-                                                    end=rev(an(dms$year))[1])
-      # update stf object with stock numbers from SAM object
-      stf[,,idxFleet,,,idxIter]@stock.n  <- window( NSH.sim[[idxIter]]@stock.n,
-                                                    start=an(dms$year)[1],
-                                                    end=rev(an(dms$year))[1])
-      
-      # update catch.wt
-      if(idxFleet == 'B' || idxFleet == 'D'){
-        stf[,,idxFleet,,,idxIter]@catch.wt <- fisheryFuture[,FuY,'BD','catch.wt',,idxIter]
-      }else{
-        stf[,,idxFleet,,,idxIter]@catch.wt <- fisheryFuture[,FuY,idxFleet,'catch.wt',,idxIter]
-      }
+  for(idxFleet in dms$unit){
+    # update stf object with current stock object
+    stf[,,idxFleet]          <- window( stocks,
+                                        start=an(dms$year)[1],
+                                        end=rev(an(dms$year))[1])
+    
+    # update catch.wt
+    if(idxFleet == 'B' || idxFleet == 'D'){
+      stf[,FuY,idxFleet]@catch.wt <- fisheryFuture[,FuY,'BD','catch.wt']
+    }else{
+      stf[,FuY,idxFleet]@catch.wt <- fisheryFuture[,FuY,idxFleet,'catch.wt']
     }
   }
   
@@ -50,12 +43,10 @@ stf_ImY      <- function(NSH.sim,
   stf@discards[]            <- 0
   stf@discards.wt[]         <- 0
   
-  
-  ############################ END TEST
-  
   ############# Compute F in intermediate year #############
   
-  # update intermediate year with results from assessment
+  # find scalors to match TACs
+  
   
   Fscalor <- array( 0, dim=c(nFleets,nits)) # initialize array
   for(idxIter in 1:nits){
@@ -64,54 +55,48 @@ stf_ImY      <- function(NSH.sim,
                                   lower=rep(1e-8,4),
                                   upper=NULL,
                                   optF_TACdiff,                                  # function to optimize
-                                  harvest_sf  = NSH.sim[[idxIter]]@harvest,       # single fleet FLStock object
                                   catch.wt_mf = fisheryFuture[,,,'catch.wt',,idxIter],       # catch weight at age single fleet. Using stock weight at age for now. How to get catch weight for 2018?
-                                  stock.n_sf  = NSH.sim[[idxIter]]@stock.n,       # stock at age
-                                  M           = stocks[[idxIter]]@m,              # natural mortality
+                                  stock.n_sf  = iter(stf@stock.n[,,1],idxIter),       # stock number single fleet, taking first element, M is fleet independent
+                                  M           = iter(stf@m[,,1],idxIter),              # natural mortality, taking first element, M is fleet independent
                                   Fsel        = fisheryFuture[,,,'sel',,idxIter], # selectivity stored as FLQuant object. Normalized between 0 and 1.
                                   iYr         = ImY,                              # year of interest
                                   TACs        = TAC[,,,,,idxIter],             # TAC FLQuant object for fleets A, B and D
                                   FCProp      = FCPropIts[,idxIter],
                                   TAC_var     = TAC_var,
-                                  recruit     = subset(rec(NSH.sim[[idxIter]]),year==ImY)$value,
+                                  recruit     = recFuture[idxIter],
                                   nls.lm.control(ftol = (.Machine$double.eps),maxiter = 1000), # optimizer control object
                                   jac=NULL)$par
   }
   
-  ############# update stf object #############
+  stf@harvest[,ImY,'A'] <- t(apply(fisheryFuture[,ImY,'A','sel'],1,'*',Fscalor[1,]))
+  stf@harvest[,ImY,'B'] <- t(apply(fisheryFuture[,ImY,'BD','sel'],1,'*',Fscalor[2,]))
+  stf@harvest[,ImY,'C'] <- t(apply(fisheryFuture[,ImY,'C','sel'],1,'*',Fscalor[3,]))
+  stf@harvest[,ImY,'D'] <- t(apply(fisheryFuture[,ImY,'BD','sel'],1,'*',Fscalor[4,]))
   
-  # update F
-  #stf@harvest[,ImY,'A'] <- t(apply(fisheryFuture[,ImY,'A','sel'],1,'*',Fscalor[1,]))
-  #stf@harvest[,ImY,'B'] <- t(apply(fisheryFuture[,ImY,'BD','sel'],1,'*',Fscalor[2,]))
-  #stf@harvest[,ImY,'C'] <- t(apply(fisheryFuture[,ImY,'C','sel'],1,'*',Fscalor[3,]))
-  #stf@harvest[,ImY,'D'] <- t(apply(fisheryFuture[,ImY,'BD','sel'],1,'*',Fscalor[4,]))
+  harvestAll <- apply(stf@harvest[,ImY],6,'rowSums')
   
+  Z <- harvestAll + drop(stf[,ImY,1]@m)
   
-  # compute stock.n, catch.n and landing.n
-  for(idxIter in 1:nits){
-    stf@harvest[,ImY,'A',,,idxIter] <- fisheryFuture[,ImY,'A','sel',,idxIter]*Fscalor[1,idxIter]
-    stf@harvest[,ImY,'B',,,idxIter] <- fisheryFuture[,ImY,'BD','sel',,idxIter]*Fscalor[2,idxIter]
-    stf@harvest[,ImY,'C',,,idxIter] <- fisheryFuture[,ImY,'C','sel',,idxIter]*Fscalor[3,idxIter]
-    stf@harvest[,ImY,'D',,,idxIter] <- fisheryFuture[,ImY,'BD','sel',,idxIter]*Fscalor[4,idxIter]
-    
-    Z <-  rowSums(drop(stf@harvest[,ImY,,,,idxIter])) + # sum accross the fleets
-          drop(stf[,ImY,1,,,idxIter]@m) # M is the same for all fleets in the stf object
-
-    # propagate stock number with Z
-    survivors                             <- stf[,ac(an(ImY)-1),1,,,idxIter]@stock.n*exp(-Z) # stock.n is the same for all fleets in the stf object
-    stf@stock.n[2:nAges,ImY,,,,idxIter]   <- survivors[1:(nAges-1)]
-    stf@stock.n[nAges,ImY,,,,idxIter]     <- stf[nAges,ImY,1,,,idxIter]@stock.n + survivors[nAges]
-    stf@stock.n[1,ImY,,,,idxIter]         <- subset(rec(NSH.sim[[idxIter]]),year==ImY)$value
-    
-    for(idxFleet in 1:nFleets){  
-      stf@catch.n[,ImY,idxFleet,,,idxIter]     <-  stf@stock.n[,ImY,idxFleet,,,idxIter]*
-                                                   (1-exp(-Z))*
-                                                   stf@harvest[,ImY,idxFleet,,,idxIter]/Z
-      stf@catch[,ImY,idxFleet,,,idxIter]       <- computeCatch(stf[,ImY,idxFleet,,,idxIter])
-      stf@landings.n[,ImY,idxFleet,,,idxIter]  <- stf@catch.n[,ImY,idxFleet,,,idxIter]
-      stf@landings[,ImY,idxFleet,,,idxIter]    <- computeLandings(stf[,ImY,idxFleet,,,idxIter])
-    }
-  }
+  # propagate stock number with Z, only fill first slot
+  survivors                             <- drop(stf@stock.n[,ac(an(ImY)-1),1])*exp(-Z) # stock.n is the same for all fleets in the stf object, taking first element
+  stf@stock.n[2:nAges,ImY,1]            <- survivors[1:(nAges-1),]
+  stf@stock.n[nAges,ImY,1]                <- stf[nAges,ImY,1]@stock.n + survivors[nAges,]
+  stf@stock.n[1,ImY,1]         <- recruit
+  
+  # copy stock for all fleets
+  stf@stock.n[,ImY,2] <- stf@stock.n[,ImY,1]
+  stf@stock.n[,ImY,3] <- stf@stock.n[,ImY,1]
+  stf@stock.n[,ImY,4] <- stf@stock.n[,ImY,1]
+  
+  Zmat <- replicate(4, Z)
+  Zmat <- aperm(Zmat, c(1,3,2))
+  
+  stf@catch.n[,ImY] <- drop(stf@harvest[,ImY])*drop(stf@stock.n[,ImY])*(1-exp(-Zmat))/Zmat
+  stf@landings.n[,ImY] <- drop(stf@harvest[,ImY])*drop(stf@stock.n[,ImY])*(1-exp(-Zmat))/Zmat
+  
+  stf@catch       <- computeCatch(stf)
+  stf@landings    <- computeCatch(stf)
+  stf@stock       <- computeStock(stf)
   
   return(stf)
   

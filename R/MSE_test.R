@@ -27,7 +27,8 @@ library(stats)
 
 # define path to directory
 #path          <- "D:/Work/Herring MSE/NSAS/"
-path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
+#path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
+path              <- "E:/wk_WKNSMSE_her.27.3a47d/R"
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
@@ -160,22 +161,8 @@ stf <- stf_ImY( NSH.sim,
 
 escapeRuns <- numeric()
 
-start.time          <- Sys.time()
-bunit               <- dimnames(biol@n)$unit
-for (iYr in an(projPeriod)){
-  cat(iYr,"\n")
-  cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
-  
-  #-------------------------------------------------------------------------------
-  # update Biology object.
-  #
-  # Need to include S-R function. For now, this is using the recruitment estimation
-  # from SAM.
-  #
-  #-------------------------------------------------------------------------------
-  
-  # Catches are updated using the stf object for ImY, simply adding residuals to 
-  # the catches. One need to include the S-R function
+iYr <- '2018'
+
   for(idxIter in 1:nits){
     resiCatch <- rnorm( length(varCatchMat[,2,idxIter]), 
                         (1:length(varCatchMat[,2,idxIter]))*0, 
@@ -226,14 +213,6 @@ for (iYr in an(projPeriod)){
       surveys[[surveyNames[idxSurvey]]]@index[,iYr,,,,idxIter] <- qSelect[,2]*exp(-Z*surveyProp)*NSelect*exp(resiSurv)
     }
   }
-  
-  cat("\n Finished biology \n")
-  cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
-  
-  #-------------------------------------------------------------------------------
-  # Assessment
-  #-------------------------------------------------------------------------------
-  
   C1 <- dim(stocks[[1]]@catch.wt)
   C1[6]<- 10
   C2 <- C1
@@ -286,121 +265,55 @@ for (iYr in an(projPeriod)){
   NSH.ctrl@residuals <- F
   
   res <- FLSAM.MSE(NSH,NSH.tun,NSH.ctrl,return.sam=T)
-  
-  continueRuns        <- which(!(1:dims(NSH)$iter) %in% escapeRuns)
-  if (iay == iy)  res <- FLSAM.MSE(NSH,idx0,sam0.ctrl,return.sam=T) #first year only, we can create an FLSAMs object for all iterations similar to the final NSAS 2018 assessment too if that is needed
-  if (iay > iy)   res <- FLSAM.MSE(stk0,idx0,sam0.ctrl,starting.sam=res,return.sam=T) #here we add the starting values for each iteration
-  
-  trouble <- data.frame(iter = 1:it , failure =  unlist(lapply(res , function(x) is.na(x))))
-  trouble <- trouble[trouble$failure == T,]
-  
-  #if we only have one iteration with problems, we try to run that one again, but now without starting values
-  if (dim(trouble)[1] == 1){
-    tres    <-  try(FLSAM(iter(stk0,trouble$iter),
-                          FLIndices(lapply(idx0 , function(x) iter(x,trouble$iter))),
-                          sam0.ctrl,silent=T))
-    #if that didn't work, we'll just save it as an empty FLSAM object
-    if(class(tres)=="try-error"){
-      res[[trouble$iter]] <- new("FLSAM")
-    } else {
-      res[[trouble$iter]] <- tres
-    }
-  }
-  #if we have more iterations with trouble, we can make use of the FLSAM.MSE routine
-  if (dim(trouble)[1] > 1){
-    resTrouble          <- FLSAM.MSE(iter(stk0,trouble$iter),
-                                     FLIndices(lapply(idx0,function(x) iter(x,trouble$iter))),
-                                     sam0.ctrl,return.sam=T)
-    counter <- 1
-    for(ii in trouble$iter){
-      if(is.na(resTrouble[[counter]])){
-        res[[ii]] <- new("FLSAM")
-      } else {
-        res[[ii]] <-  resTrouble[[counter]]
-      }
-      counter <- counter + 1
-    }
-  }
-  
-  
-  #Update the stock object and store which runs to escape
-  for(ii in 1:it){
-    if(!is.na(res[[ii]]@harvest[1,1,drop=T])){
-      iter(stk0@harvest,ii) <- res[[ii]]@harvest
-      iter(stk0@stock.n,ii) <- res[[ii]]@stock.n
-    } else {
-      escapeRuns <- sort(unique(c(escapeRuns,ii)))
-    }
-  }
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  iYr <- '2017'
-  NSH.ctrl@range[5] <- an(iYr)
-  NSH.ctrl@residuals <- F
-  idxIter <- 2
-  
-  for(idxIter in 1:nits){
-    NSH2 <- window(  stocks[[idxIter]],
-                    start=an(fullPeriod[1]),
-                    end=an(iYr))
-    NSH2@catch.n  <- NSH2@landings.n
-    NSH2@catch    <- computeCatch(NSH2)
-    NSH2@landings <- computeLandings(NSH2)
-    
-    # run a 7 years median filter to prevent any big discontinuity in M
-    #for(idxAge in dimnames(NSH2@m)$age){
-    #  NSH2@m[idxAge,] <- runmed(NSH2@m[idxAge,],k=11)
-    #  NSH2@stock.wt[idxAge,] <- runmed(NSH2@stock.wt[idxAge,],k=11)
-    #  NSH2@mat[idxAge,] <- runmed(NSH2@mat[idxAge,],k=11)
-    #}
-    
-    NSH.tun2 <- surveys
-    
-    for(idxSurvey in 1:length(surveys)){
-      minYearSurvey     <- min(as.numeric(colnames(NSH.tun2[[surveyNames[idxSurvey]]]@index)))
-      NSH.tun2[[idxSurvey]] <- window( NSH.tun2[[idxSurvey]][,,,,,idxIter],
-                                      start=minYearSurvey,
-                                      end=an(iYr))
-      NSH.tun2[[idxSurvey]]@effort[,iYr] <- 1
-      NSH.tun2[[idxSurvey]]@catch.n <- NSH.tun2[[idxSurvey]]@index
-    }
 
-    NSH.sim[[idxIter]] <- FLSAM(NSH2,NSH.tun2,NSH.ctrl)
-  }
-  
-  cat("\n Finished stock assessment \n")
-  cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
-  
-  #-------------------------------------------------------------------------------
-  # Fishery, i.e. Short term forecast
-  #-------------------------------------------------------------------------------
-  
-  # define years for fisheries
-  DtY <- ac(iYr-1)  # terminal year in the assessment
-  ImY <- ac(iYr)    # intermediate year in the short term forecast, ie, current year
-  FcY <- ac(iYr+1)  # year for which the advice is given, ie, forecast two years ahead the last year in the assessment
-  CtY <- ac(an(DtY)+3)             #Continuation year
-  FuY <- c(ImY,FcY,CtY) # combination of future years
-  
-  ############# Recruitment #############
-  # Recruitment for intermediate year, forecast year and continuation year
-  # intermediate year: taken from SAM
-  # forecast and continuation years: 10 years weighted average
- 
-  
-  # apply HCR to obtain F2-6 and F0-1
-  
-  cat("\n Finished forecast \n")
-  cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
-}
-save.image(file=paste(outPath,runName,"_",settings$RecRegime,".RData",sep=""))
+stcks <- NSH
+tun 	<- NSH.tun
+ctrl 	<- NSH.ctrl
 
+  if(class(stcks)=="FLStocks") stop("Not implemented for multi-fleet yet")
+  if(class(stcks)=="FLStock") stcks <- FLStocks(residual=stcks)
+  if(any(unlist(lapply(stcks,function(x)dims(x)$iter))<=1) & any(unlist(lapply(tun,function(x)dims(x)$iter))<=1))
+    stop("Running in MSE mode means supplying FLStock and FLIndices with more iters than 1. Use FLSAM() instead")
 
+  #Count iters
+  iters <- unlist(lapply(stcks,function(x)dims(x)$iter))
+
+  #Turn residuals off
+  ctrl@residuals <- FALSE
+
+  #get datasets ready
+  data  <- conf <- par <- list()
+
+  if("doParallel" %in% (.packages()))
+    detach("package:doParallel",unload=TRUE)
+  if("foreach" %in% (.packages()))
+    detach("package:foreach",unload=TRUE)
+  if("iterators" %in% (.packages()))
+    detach("package:iterators",unload=TRUE)
+
+  require(doParallel)
+  ncores <- detectCores()-1
+  ncores <- ifelse(iters<ncores,iters,ncores)
+  cl <- makeCluster(ncores) #set up nodes
+  clusterEvalQ(cl,library(FLSAM))
+  clusterEvalQ(cl,library(stockassessment))
+  registerDoParallel(cl)
+
+catch.vars <- NULL
+starting.sam <- NULL
+return.sam <- F
+
+  data <- foreach(i = 1:iters) %dopar% FLSAM2SAM(FLStocks("residual"=iter(stcks[["residual"]],i)),FLIndices(lapply(tun, function(x) iter(x,i))),ctrl@sumFleets,catch.vars)
+
+conf <- foreach(i = 1:iters) %dopar% ctrl2conf(ctrl,data[[i]])
+  par  <- foreach(i = 1:iters) %dopar% stockassessment::defpar(data[[i]],conf[[i]])
+
+checkUpdate <- function(i,iSam,iPar){
+                 if(class(iSam)!="logical"){
+                   ret <- updateStart(iPar,FLSAM2par(iSam)) } else {
+                   ret <- iPar }
+                 return(ret)}
+  if(!is.null(starting.sam))
+    par <- foreach(i = 1:iters) %dopar% checkUpdate(i,starting.sam[[i]],par[[i]])
+
+  res <- foreach(i = 1:iters) %dopar% try(sam.fitfast(data[[i]],conf[[i]],par[[i]],silent=T))
