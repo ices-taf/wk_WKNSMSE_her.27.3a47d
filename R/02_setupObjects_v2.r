@@ -61,7 +61,7 @@ load(file.path(outPath,paste0(assessment_name,'_sf_noLAI.Rdata')))
 
 # parameters
 n.retro.years       <-  7                                       # Number of years for which to run the retrospective
-nFutureyrs          <- 20
+nFutureyrs          <- 20 + 3
 histMinYr           <- dims(NSH)$minyear
 histMaxYr           <- dims(NSH)$maxyear
 yearCurrent         <- histMinYr:histMaxYr # vector the years
@@ -422,7 +422,8 @@ for(idxIter in 1:nits){
   FCPropIts[histPeriod,idxIter] <- FCProp
   
   # fill in projection period with randomization (see above comments)
-  FCPropIts[projPeriod,idxIter] <- FCProp[ac(yrChainFC[[idxIter]][1:20])]
+  FCPropIts[projPeriod,idxIter] <-   array(FCProp[ac(yrChainFC[[idxIter]])],
+                                           dim=length(FCPropIts[projPeriod,idxIter]))
 }
 
 #-------------------------------------------------------------------------------
@@ -622,6 +623,13 @@ save(stocks,
      varCatchMat,
      varSurvMat,
      file=file.path(outPath,paste0(assessment_name,'_init_MSE.RData')))
+
+# resetting parameters
+nFutureyrs          <- 20
+yearCurrent         <- histMinYr:histMaxYr # vector the years
+futureMaxYr         <- histMaxYr + nFutureyrs
+projPeriod          <- ac((histMaxYr+1):futureMaxYr)
+fullPeriod          <- c(histPeriod,projPeriod)
 
 # save parameters
 save(n.retro.years, 

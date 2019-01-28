@@ -133,19 +133,19 @@ uptakeFleets <- read.table(file.path(dataPath,'over_underfishing2017.csv'),sep =
 # need to input the split for the D fleet - ask Henrik
 
 # transfer from C fleet TAC to fleet A
-Ctransfer   <- runif(length(projPeriod),min=0.4, max=0.5)    # Transfer of TAC from IIIa to IVa for C fleet in assessment year. Set between 0.4 and 0.5
+Ctransfer   <- runif(length(projPeriod)+3,min=0.4, max=0.5)    # Transfer of TAC from IIIa to IVa for C fleet in assessment year. Set between 0.4 and 0.5
 # update for the D fleeta
-Duptake     <- rep(1, length(projPeriod)) # assume full uptake for the D fleet
-Dsplit      <- rep(0.60, length(projPeriod)) # NSAS/WBSS split randomization based on historical records. Fixed for now, need to contact henrik
+Duptake     <- rep(1, length(projPeriod)+3) # assume full uptake for the D fleet
+Dsplit      <- rep(0.60, length(projPeriod)+3) # NSAS/WBSS split randomization based on historical records. Fixed for now, need to contact henrik
 # update for the B fleet
-Buptake     <- rnorm (length(projPeriod), 
+Buptake     <- rnorm (length(projPeriod)+3, 
                       mean(an(as.vector(uptakeFleets[2:16,3])),na.rm=TRUE), # mean over available historical values
                       sd(an(as.vector(uptakeFleets[2:16,3])),na.rm=TRUE))   # sd over available historical values
 
 TAC_var     <- array(NA,
-                     dim=c(length(projPeriod),
+                     dim=c(length(projPeriod)+3,
                            4),
-                     dimnames=list('years' = projPeriod,
+                     dimnames=list('years' = ac(an(projPeriod)[1]:(an(projPeriod)[length(projPeriod)]+3)),
                                    'var' = c('Ctransfer','Duptake','Dsplit','Buptake')))
 TAC_var[,'Ctransfer'] <- Ctransfer
 TAC_var[,'Duptake']   <- Duptake
@@ -181,7 +181,6 @@ stf <- stf_ImY( stocks,
 escapeRuns <- numeric()
 
 start.time          <- Sys.time()
-bunit               <- dimnames(biol@n)$unit
 for (iYr in an(projPeriod)){
   print(iYr)
   cat(iYr,"\n")
@@ -364,6 +363,8 @@ for (iYr in an(projPeriod)){
   cat("\n Finished forecast \n")
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
 }
-save.image(file=paste(outPath,runName,"_",settings$RecRegime,".RData",sep=""))
+
+
+#save.image(file=paste(outPath,runName,"_",settings$RecRegime,".RData",sep=""))
 
 
