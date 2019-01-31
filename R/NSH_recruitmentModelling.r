@@ -28,7 +28,7 @@ fy <- iy + ny -1                    # final year
 #NSH.RI <- fmle(NSH.BH)
 
 #- Generate empty object
-stkMC.sr <- fmle(as.FLSR(stkMC,model='segreg'))
+stkMC.sr <- fmle(as.FLSR(stkMC,model='segreg')) # just to populate the structure
 
 # now do the actual parameter estimation per iteration of the 1000 iterations
 # 85% being ricker, 15% being segreg
@@ -72,7 +72,7 @@ for(i in 1:dims(stkMC)$iter){
 }
 rec     <- rec * exp(sr.res[,ac(yr)])
 
-
+# ARIMA to get an autocorrelation in recruitment between the years.
 
 
 

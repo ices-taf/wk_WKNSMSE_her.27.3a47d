@@ -1,5 +1,5 @@
 stf_ImY      <- function(stocks,
-                         fisheryFuture,
+                         fishery,
                          TAC,
                          TAC_var,
                          FCPropIts,
@@ -26,16 +26,12 @@ stf_ImY      <- function(stocks,
   
   for(idxFleet in dms$unit){
     # update stf object with current stock object
-    stf[,,idxFleet]          <- window( stocks,
+    stf[,,idxFleet]           <- window(stocks,
                                         start=an(dms$year)[1],
                                         end=rev(an(dms$year))[1])
     
-    # update catch.wt
-    if(idxFleet == 'B' || idxFleet == 'D'){
-      stf[,FuY,idxFleet]@catch.wt <- fisheryFuture[,FuY,'BD','catch.wt']
-    }else{
-      stf[,FuY,idxFleet]@catch.wt <- fisheryFuture[,FuY,idxFleet,'catch.wt']
-    }
+    stf[,FuY,idxFleet]@m        <- stf[,ac(an(ImY)-1),idxFleet]@m # copy M from terminal year to intermediate/forecast/continuation years
+    stf[,FuY,idxFleet]@catch.wt <- fishery@landings.wt[,FuY,idxFleet]
   }
   
   # Fill slots that have no meaning for NSAS
@@ -55,10 +51,9 @@ stf_ImY      <- function(stocks,
                                   lower=rep(1e-8,4),
                                   upper=NULL,
                                   optF_TACdiff,                                  # function to optimize
-                                  catch.wt_mf = fisheryFuture[,,,'catch.wt',,idxIter],       # catch weight at age single fleet. Using stock weight at age for now. How to get catch weight for 2018?
+                                  fishery = fishery[,,,,,idxIter],       # catch weight at age single fleet. Using stock weight at age for now. How to get catch weight for 2018?
                                   stock.n_sf  = iter(stf@stock.n[,,1],idxIter),       # stock number single fleet, taking first element, M is fleet independent
                                   M           = iter(stf@m[,,1],idxIter),              # natural mortality, taking first element, M is fleet independent
-                                  Fsel        = fisheryFuture[,,,'sel',,idxIter], # selectivity stored as FLQuant object. Normalized between 0 and 1.
                                   iYr         = ImY,                              # year of interest
                                   TACs        = TAC[,,,,,idxIter],             # TAC FLQuant object for fleets A, B and D
                                   FCProp      = FCPropIts[,idxIter],
@@ -68,14 +63,14 @@ stf_ImY      <- function(stocks,
                                   jac=NULL)$par
   }
   
-  stf@harvest[,ImY,'A'] <- t(apply(fisheryFuture[,ImY,'A','sel'],1,'*',Fscalor[1,]))
-  stf@harvest[,ImY,'B'] <- t(apply(fisheryFuture[,ImY,'BD','sel'],1,'*',Fscalor[2,]))
-  stf@harvest[,ImY,'C'] <- t(apply(fisheryFuture[,ImY,'C','sel'],1,'*',Fscalor[3,]))
-  stf@harvest[,ImY,'D'] <- t(apply(fisheryFuture[,ImY,'BD','sel'],1,'*',Fscalor[4,]))
+  stf@harvest[,ImY,'A'] <- t(apply(fishery@landings.sel[,ImY,'A'],1,'*',Fscalor[1,]))
+  stf@harvest[,ImY,'B'] <- t(apply(fishery@landings.sel[,ImY,'B'],1,'*',Fscalor[2,]))
+  stf@harvest[,ImY,'C'] <- t(apply(fishery@landings.sel[,ImY,'C'],1,'*',Fscalor[3,]))
+  stf@harvest[,ImY,'D'] <- t(apply(fishery@landings.sel[,ImY,'D'],1,'*',Fscalor[4,]))
   
   harvestAll <- apply(stf@harvest[,ImY],6,'rowSums')
   
-  Z <- harvestAll + drop(stf[,ImY,1]@m)
+  Z <- harvestAll + drop(stf[,ImY,1]@m) # copy M from previous year (i.e. terminal year of assessment)
   
   # propagate stock number with Z, only fill first slot
   survivors                             <- drop(stf@stock.n[,ac(an(ImY)-1),1])*exp(-Z) # stock.n is the same for all fleets in the stf object, taking first element

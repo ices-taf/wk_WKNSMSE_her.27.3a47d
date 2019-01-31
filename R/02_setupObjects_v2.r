@@ -22,11 +22,13 @@ rm(list=ls())
 
 library(FLSAM)
 library(FLEDA)
+library(FLFleet)
 
 # define path to directory
 #path          <- "D:/Work/Herring MSE/NSAS/"
-path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
+#path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
+path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -75,7 +77,8 @@ fecYears            <- ac(2007:2017)
 nits                <- 10 # number of random samples
 
 # reading the raw M and applying plus group
-raw_M             <- read.csv(file.path(dataPath,"Smoothed_span50_M_NotExtrapolated_NSASSMS2016.csv"),header=TRUE)
+#raw_M             <- read.csv(file.path(dataPath,"Smoothed_span50_M_NotExtrapolated_NSASSMS2016.csv"),header=TRUE)
+raw_M             <- read.csv(file.path(dataPath,"Raw_NotExtrapolated_NSAS_SMS2016.csv"),header=TRUE)
 colnames(raw_M)   <- sub("X","",colnames(raw_M))
 rownames(raw_M)   <- raw_M[,1]
 raw_M             <- raw_M[,-1]# Trim off first column as it contains 'ages'
@@ -86,6 +89,7 @@ colnames(raw_M)   <- histMinYr:histMaxYr
 # !!!!!! to be updated. Right now one uses an empty FLStock object. This is wrong as I think the setting of the plus group 
 # needs the catches as input
 NSHM2             <- readFLStock(file.path(dataPath,"index.txt"),no.discards=TRUE,quiet=FALSE)
+#NSHM2             <- NSH
 NSHM2@m[]         <- as.matrix(raw_M)
 pg                <- NSH@range['max']
 NSHM2             <- setPlusGroup(NSHM2,pg) # really wonder if the setPlusGroup does anything... Needs clarifying.
@@ -103,21 +107,21 @@ names(NSH.sim)  <- paste0('iter',1:nits)
 # 4) create FLStocks object using random samples (with future years as NA)
 #-------------------------------------------------------------------------------
 
-stocks          <- NSH + NSH.sim # from FLSAMs to FLStocks
-stocks          <- window(window(stocks,end=histMaxYr+1),start=histMinYr,end=futureMaxYr) # extend the FLStock object to the full projection period
+biol          <- NSH + NSH.sim # from FLSAMs to FLStocks
+biol          <- window(window(biol,end=histMaxYr+1),start=histMinYr,end=futureMaxYr) # extend the FLStock object to the full projection period
 
 # update FLStocks object with random samples infered from variance/co-variance matrix
 for(idxIter in 1:nits){
-  stocks[[idxIter]]@catch.n                    <- stocks[[idxIter]]@stock.n * stocks[[idxIter]]@harvest / 
-                                                  (stocks[[idxIter]]@harvest + stocks[[idxIter]]@m) * 
-                                                  (1 - exp(-stocks[[idxIter]]@harvest - stocks[[idxIter]]@m)) # compute catch numbers 
-  stocks[[idxIter]]@catch.n[,ac(1978:1979)]    <- NA # fill in Na for the the closure catch data
-  stocks[[idxIter]]@landings.n                 <- stocks[[idxIter]]@catch.n
+  biol[[idxIter]]@catch.n                    <- biol[[idxIter]]@stock.n * biol[[idxIter]]@harvest / 
+                                                  (biol[[idxIter]]@harvest + biol[[idxIter]]@m) * 
+                                                  (1 - exp(-biol[[idxIter]]@harvest - biol[[idxIter]]@m)) # compute catch numbers 
+  biol[[idxIter]]@catch.n[,ac(1978:1979)]    <- NA # fill in Na for the the closure catch data
+  biol[[idxIter]]@landings.n                 <- biol[[idxIter]]@catch.n
   
-  stocks[[idxIter]]@harvest.spwn[,projPeriod]  <- stocks[[idxIter]]@harvest.spwn[,ac(histMaxYr)] # propagate Fprop before spawning
-  stocks[[idxIter]]@m.spwn[,projPeriod]        <- stocks[[idxIter]]@m.spwn[,ac(histMaxYr)] # propagate Mprop before spawning
+  biol[[idxIter]]@harvest.spwn[,projPeriod]  <- biol[[idxIter]]@harvest.spwn[,ac(histMaxYr)] # propagate Fprop before spawning
+  biol[[idxIter]]@m.spwn[,projPeriod]        <- biol[[idxIter]]@m.spwn[,ac(histMaxYr)] # propagate Mprop before spawning
   
-  stocks[[idxIter]]@stock <- computeStock(stocks[[idxIter]])
+  biol[[idxIter]]@stock <- computeStock(biol[[idxIter]])
 }
 
 #-------------------------------------------------------------------------------
@@ -133,43 +137,48 @@ for(idxIter in 1:nits){
 # Note: M is from raw_M, not the M (smoothed) from the assessment
 #-------------------------------------------------------------------------------
 
+# define fishery object
+dmns      <- dimnames(biol[[1]]@m)
+dmns$unit <- c("A","B","C","D")
+dmns$iter <- 1:nits
+
+fishery <- FLCatch(price=FLQuant(NA,dimnames=dmns))
+
 # generate random blocks for weight at age and maturity
 yrChain   <- randBlocks(an(fecYears),an(projPeriod),nits)
 yrChainM  <- randBlocks(an(fecYears),an(projPeriod),nits)
-# catch weight
-multiFleet_catch.wt         <- array( 0, # initialize array, nAges x nYears x nFleets x nits. 3 fleets in assessment (A,BD,C)
-                                      dim=c(dim(NSHs3$residual@catch.wt)[1], # nAges
-                                            length(projPeriod),              # nYears
-                                            3,                               # nFleets
-                                            nits),                           # nits.
-                                      dimnames = list(0:(dim(NSHs3$residual@catch.wt)[1]-1),
-                                                      as.numeric(projPeriod),
-                                                      1:3,
-                                                      1:nits))
 
 # update FLStocks object
 for(idxIter in 1:nits){
   # future maturity at age
-  stocks[[idxIter]]@mat      [,projPeriod][]               <- array(stocks[[idxIter]]@mat[,ac(yrChain[[idxIter]])],
-                                                                    dim=dim(stocks[[idxIter]]@mat[,projPeriod]))
+  biol[[idxIter]]@mat      [,projPeriod][]               <- array(biol[[idxIter]]@mat[,ac(yrChain[[idxIter]])],
+                                                                    dim=dim(biol[[idxIter]]@mat[,projPeriod]))
   # future weight at age
-  stocks[[idxIter]]@stock.wt [,projPeriod][]               <- array(stocks[[idxIter]]@stock.wt[,ac(yrChain[[idxIter]])],
-                                                                    dim=dim(stocks[[idxIter]]@stock.wt[,projPeriod]))
+  biol[[idxIter]]@stock.wt [,projPeriod][]               <- array(biol[[idxIter]]@stock.wt[,ac(yrChain[[idxIter]])],
+                                                                    dim=dim(biol[[idxIter]]@stock.wt[,projPeriod]))
   
   # future catch weight at age
-  stocks[[idxIter]]@catch.wt [,projPeriod][]               <- array(stocks[[idxIter]]@catch.wt[,ac(yrChain[[idxIter]])],
-                                                                    dim=dim(stocks[[idxIter]]@catch.wt[,projPeriod]))
+  biol[[idxIter]]@catch.wt [,projPeriod][]               <- array(biol[[idxIter]]@catch.wt[,ac(yrChain[[idxIter]])],
+                                                                    dim=dim(biol[[idxIter]]@catch.wt[,projPeriod]))
   
   # future catch weight at age
-  stocks[[idxIter]]@landings.wt [,projPeriod][]             <- array(stocks[[idxIter]]@landings.wt[,ac(yrChain[[idxIter]])],
-                                                                     dim=dim(stocks[[idxIter]]@landings.wt[,projPeriod]))
-  
-  # multi fleet catch weight at age
-  multiFleet_catch.wt[,projPeriod,,idxIter] <- drop(NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]])])[,1:length(projPeriod),]
+  biol[[idxIter]]@landings.wt [,projPeriod][]             <- array(biol[[idxIter]]@landings.wt[,ac(yrChain[[idxIter]])],
+                                                                     dim=dim(biol[[idxIter]]@landings.wt[,projPeriod]))
   
   # future natural mortality at age, on a different block chain
-  stocks[[idxIter]]@m        [,projPeriod][]               <- array(raw_M[,ac(yrChainM[[idxIter]])],
-                                                                    dim=dim(stocks[[idxIter]]@m[,projPeriod]))
+  biol[[idxIter]]@m        [,projPeriod][]               <- array(raw_M[,ac(yrChainM[[idxIter]])],
+                                                                    dim=dim(biol[[idxIter]]@m[,projPeriod]))
+  
+  
+  # fill in landing weights
+  for(idxFleet in dmns$unit){
+    if(idxFleet == 'B' || idxFleet == 'D'){
+      fishery@landings.wt[,projPeriod,idxFleet,,,idxIter]           <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'BD']
+    }else{
+      fishery@landings.wt[,projPeriod,idxFleet,,,idxIter]           <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,idxFleet]
+    }
+  }
+  # multi fleet catch weight at age
 }
 
 #-------------------------------------------------------------------------------
@@ -242,16 +251,16 @@ for(idxIter in 1:nits){
     rownames(resi)    <- qSelect$age
     # generate the residuals using a normal distribution - are residuals log or linear??? Probably log
     for(idxResi in 1:dim(sdSelect)[1]){
-      resi[idxResi,]  <- rnorm(length(yearCurrentSurvey), 
-                               0, 
-                               sdSelect$value[idxResi])
+      resi[idxResi,]  <- rlnorm(length(yearCurrentSurvey), 
+                                0, 
+                                sdSelect$value[idxResi])
     }
     
-    NSelect     <- stocks[[idxIter]]@stock.n[match(as.character(sdSelect$age),rownames(stocks[[idxIter]]@stock.n)), # filter ages
-                                             match(as.character(yearCurrentSurvey),colnames(stocks[[idxIter]]@stock.n))]  # filter years
+    NSelect     <- biol[[idxIter]]@stock.n[match(as.character(sdSelect$age),rownames(biol[[idxIter]]@stock.n)), # filter ages
+                                             match(as.character(yearCurrentSurvey),colnames(biol[[idxIter]]@stock.n))]  # filter years
     NSelect     <- drop(NSelect) # drop dimensions with 1 level
-    FSelect     <-  stocks[[idxIter]]@harvest[match(as.character(sdSelect$age),rownames(stocks[[idxIter]]@stock.n)), # filter ages for F
-                                              match(as.character(yearCurrentSurvey),colnames(stocks[[idxIter]]@stock.n))] # filter years for F
+    FSelect     <-  biol[[idxIter]]@harvest[match(as.character(sdSelect$age),rownames(biol[[idxIter]]@stock.n)), # filter ages for F
+                                              match(as.character(yearCurrentSurvey),colnames(biol[[idxIter]]@stock.n))] # filter years for F
     FSelect     <- drop(FSelect) # drop dimensions with 1 level
     Z           <-  raw_M[match(as.character(sdSelect$age),rownames(raw_M)), # filter ages for M
                           match(as.character(yearCurrentSurvey),colnames(raw_M))]  # filter years for M
@@ -260,28 +269,29 @@ for(idxIter in 1:nits){
     
     # update survey object
     surveys[[surveyNames[idxSurvey]]]@index[,match(as.character(yearCurrentSurvey),colnames(surveys[[surveyNames[idxSurvey]]]@index)) # filling only the years available for the survey
-                                            ,,,,idxIter] <- as.matrix(replicate(length(yearCurrentSurvey), qSelect$value)*exp(-Z*surveyProp)*NSelect*exp(resi))
+                                            ,,,,idxIter] <- as.matrix(replicate(length(yearCurrentSurvey), qSelect$value)*exp(-Z*surveyProp)*NSelect*resi)
     surveys[[surveyNames[idxSurvey]]] <- surveys[[surveyNames[idxSurvey]]][,ac(minYearSurvey:futureMaxYr)]
+    if(surveyNames[idxSurvey] == 'HERAS') surveys[[surveyNames[idxSurvey]]]@index[1,ac(1989:1996),,,,idxIter] <- -1 # trim age 1 from 1989 to 1996 specifically for HERAS
   }
 }
 
 # plotting survey indices
-surveyName <- 'IBTS-Q3'
+#surveyName <- 'IBTS-Q3'
 
-par(mfrow=c(3,2))
-for(ageIdx in 1:dim(NSH.tun[[surveyName]]@index)[1]){
+#par(mfrow=c(3,2))
+#for(ageIdx in 1:dim(NSH.tun[[surveyName]]@index)[1]){
   #ageIdx  <- 4
-  a     <-drop(NSH.tun[[surveyName]]@index)
+#  a     <-drop(NSH.tun[[surveyName]]@index)
   #a     <- NSH.tun[[surveyName]]@index # in case of only 1 age in survey object
-  years <- as.numeric(colnames(NSH.tun[[surveyName]]@index))
-  plot(years,a[ageIdx,],type='l',ylab=c('age',ac(ageIdx-1)))
-  
-  for(idxIter in 1:nits){
-    b     <-surveys[[surveyName]]@index[ageIdx,,,,,idxIter]
-    b     <- b[,match(years,colnames(b))]
-    lines(years,b,col='green')
-  }
-}
+#  years <- as.numeric(colnames(NSH.tun[[surveyName]]@index))
+#  plot(years,a[ageIdx,],type='l',ylab=c('age',ac(ageIdx-1)))
+#  
+#  for(idxIter in 1:nits){
+#    b     <-surveys[[surveyName]]@index[ageIdx,,,,,idxIter]
+#    b     <- b[,match(years,colnames(b))]
+#    lines(years,b,col='green')
+#  }
+#}
 
 
 #-------------------------------------------------------------------------------
@@ -319,49 +329,49 @@ for(idxIter in 1:nits){
   rownames(resi)    <- sdSelect$age
   # fill the residual array
   for(idxResi in 1:dim(sdSelect)[1]){
-    resi[idxResi,]  <- rnorm(length(yearCurrent), 
-                             0, 
-                             sdSelect$value[idxResi])
+    resi[idxResi,]  <- rlnorm(length(yearCurrent), 
+                              0, 
+                              sdSelect$value[idxResi]) # lognormal distribution
   }
   
   #C(a,y) = F(a,y)/Z(a,y)*(1-exp(-Z(a,y)))*N(a,y)*res(a,y)
-  NSelect   <- stocks[[idxIter]]@stock.n[,match(as.character(yearCurrent),colnames(stocks[[idxIter]]@stock.n))] # number at age filtered to current years
+  NSelect   <- biol[[idxIter]]@stock.n[,match(as.character(yearCurrent),colnames(biol[[idxIter]]@stock.n))] # number at age filtered to current years
   NSelect   <- drop(NSelect) # drop dimensions with 1 level
-  FSelect   <- stocks[[idxIter]]@harvest[,match(as.character(yearCurrent),colnames(stocks[[idxIter]]@stock.n))] # F for current years
+  FSelect   <- biol[[idxIter]]@harvest[,match(as.character(yearCurrent),colnames(biol[[idxIter]]@stock.n))] # F for current years
   FSelect   <- drop(FSelect) # drop dimensions with 1 level
-  Z         <-  raw_M[,match(as.character(yearCurrent),colnames(stocks[[idxIter]]@stock.n))]  # current years for M
+  Z         <-  raw_M[,match(as.character(yearCurrent),colnames(biol[[idxIter]]@stock.n))]  # current years for M
   Z         <- Z + FSelect # adding M and F
   
   # catches, with added error based on observation variance
-  stocks[[idxIter]]@catch.n[,match(as.character(yearCurrent),colnames(stocks[[idxIter]]@stock.n))] <-  # filter only the current years
-    FSelect/Z*(1-exp(-Z))*NSelect*exp(resi)
+  biol[[idxIter]]@catch.n[,match(as.character(yearCurrent),colnames(biol[[idxIter]]@stock.n))] <-  # filter only the current years
+                                                                                                    FSelect/Z*(1-exp(-Z))*NSelect*resi
   
-  stocks[[idxIter]]@catch <- computeCatch(stocks[[idxIter]])
+  biol[[idxIter]]@catch <- computeCatch(biol[[idxIter]])
   #We don't believe the closure catch data, so put it to NA
-  stocks[[idxIter]]@catch.n[,ac(1978:1979)]           <- NA
+  biol[[idxIter]]@catch.n[,ac(1978:1979)]           <- NA
   
   # landings, i.e. here modelled as catches without error
-  stocks[[idxIter]]@landings.n[,match(as.character(yearCurrent),colnames(stocks[[idxIter]]@stock.n))] <-  # filter only the current years
-    FSelect/Z*(1-exp(-Z))*NSelect
-  stocks[[idxIter]]@landings <- computeLandings(stocks[[idxIter]])
+  biol[[idxIter]]@landings.n[,match(as.character(yearCurrent),colnames(biol[[idxIter]]@stock.n))] <-  # filter only the current years
+                                                                                                      FSelect/Z*(1-exp(-Z))*NSelect
+  biol[[idxIter]]@landings <- computeLandings(biol[[idxIter]])
   #We don't believe the closure catch data, so put it to NA
   #stocks[[idxIter]]@landings.n[,ac(1978:1979)]           <- NA
 }
 
 # plotting the catches
-ageIdx  <- 3
+#ageIdx  <- 3
 
-par(mfrow=c(3,3))
-for(ageIdx in 1:dim(NSH@catch.n)[1]){
-  a     <- drop(NSH@catch.n)
-  years <- histMinYr:histMaxYr # vector the years
-  plot(years,a[ageIdx,],type='l',ylab=c('age',ac(ageIdx-1)))
-  for(idxIter in 1:nits){
-    b     <- stocks[[idxIter]]@catch.n[ageIdx,,,,]
-    b     <- b[,match(years,colnames(b))]
-    lines(years,b,col='green')
-  }
-}
+#par(mfrow=c(3,3))
+#for(ageIdx in 1:dim(NSH@catch.n)[1]){
+#  a     <- drop(NSH@catch.n)
+#  years <- histMinYr:histMaxYr # vector the years
+#  plot(years,a[ageIdx,],type='l',ylab=c('age',ac(ageIdx-1)))
+#  for(idxIter in 1:nits){
+#    b     <- biol[[idxIter]]@catch.n[ageIdx,,,,]
+#    b     <- b[,match(years,colnames(b))]
+#    lines(years,b,col='green')
+#  }
+#}
 
 #-------------------------------------------------------------------------------
 # 8) C fleet: proportion of F of the C fleet for the future years
@@ -401,8 +411,8 @@ rownames(FC)  <- ages
 
 for(idxAge in 1:length(ages)){
   Ftot              <-  NSH3f.sam@harvest[idxAge,1:length(yearCurrent),,,1] + # fleet A
-    NSH3f.sam@harvest[idxAge,1:length(yearCurrent),,,2] + # fleet BD
-    NSH3f.sam@harvest[idxAge,1:length(yearCurrent),,,3]   # fleet C
+                        NSH3f.sam@harvest[idxAge,1:length(yearCurrent),,,2] + # fleet BD
+                        NSH3f.sam@harvest[idxAge,1:length(yearCurrent),,,3]   # fleet C
   Ftot              <-  drop(Ftot)
   FA[idxAge,]   <-  drop(NSH3f.sam@harvest[idxAge,1:length(yearCurrent),,,1])
   FBD[idxAge,]  <-  drop(NSH3f.sam@harvest[idxAge,1:length(yearCurrent),,,2])
@@ -427,35 +437,12 @@ for(idxIter in 1:nits){
 }
 
 #-------------------------------------------------------------------------------
-# 9) D fleet: fixed catch per year (following TAC). One will vary the split 
-# between NSAS and WBSS
-#-------------------------------------------------------------------------------
-
-
-
-#-------------------------------------------------------------------------------
-# 10) create selection patterns for the different fleets
+# 9) create selection patterns for the different fleets
 # Selectivity of fleet projected forward using a random walk, using results from
 # the multi-fleet assessment
 #-------------------------------------------------------------------------------
 
 fleets <- c('A','C','BD')
-
-############# initialize FLQuant object containing F and selec 193tivities #############
-dmns        <- dimnames(NSH@harvest)
-dmns$unit   <- fleets
-dmns$season <- c('F','sel','catch.wt')
-dmns$year   <- projPeriod
-dmns$iter   <- 1:nits
-
-fisheryFuture    <- FLQuant(array( NA, # covariance matrix using a period of 10 years for all the ages
-                                   dim=c(length(ages), # ages
-                                         nFutureyrs,   # years
-                                         3,            # fleet (4)
-                                         3,            # quantity stored (F, sel)
-                                         1,
-                                         nits)), # iterations
-                            dimnames=dmns)
 
 
 ############# compute selectivity with random walk for each fleet #############
@@ -520,39 +507,49 @@ for(idxFleet in 1:length(fleets)){
       rwF[,idxYear,,,,idxIter] <- rwF[,idxYear,,,,idxIter]/max(rwF[,idxYear,,,,idxIter])
     }
     # fill in final FLQuant object
-    fisheryFuture[,,fleets[idxFleet],'sel',,idxIter] <- rwF[,,,,,idxIter]
+    #fisheryFuture[,,fleets[idxFleet],'sel',,idxIter] <- rwF[,,,,,idxIter]
+    if(fleets[idxFleet] == 'BD'){
+      fishery@landings.sel[,projPeriod,'B',,,idxIter] <- rwF[,,,,,idxIter]
+      fishery@landings.sel[,projPeriod,'D',,,idxIter] <- rwF[,,,,,idxIter]
+    }else{
+      fishery@landings.sel[,projPeriod,fleets[idxFleet],,,idxIter] <- rwF[,,,,,idxIter]
+    }
   }
 }
 
-############# plot selectivity #############
+#-------------------------------------------------------------------------------
+# 10) process error
+# for now, we use the standard deviation in numbers to model the process error
+#-------------------------------------------------------------------------------
 
+temp <-n.var(NSH.sim[[idxIter]])
+varNhMat <- array(NA,
+                  dim=c(dim(temp)[1],
+                           2,
+                           nits),
+                     dimnames=list('fleet' = temp$fleet,
+                                   'var' = c('ages','value')))
 
-############# fill in FLQuant object with Fs #############
 for(idxIter in 1:nits){
-  fisheryFuture[,1,'A','F',,idxIter]   <- NSH3f.sam@harvest[,'2018',,,'A']
-  fisheryFuture[,1,'C','F',,idxIter]   <- NSH3f.sam@harvest[,'2018',,,'C']
-  fisheryFuture[,1,'BD','F',,idxIter]  <- NSH3f.sam@harvest[,'2018',,,'BD']
-  
-  fisheryFuture[,,'A','catch.wt',,idxIter]   <- multiFleet_catch.wt[,,1,idxIter]
-  fisheryFuture[,,'BD','catch.wt',,idxIter]   <- multiFleet_catch.wt[,,2,idxIter]
-  fisheryFuture[,,'C','catch.wt',,idxIter]  <- multiFleet_catch.wt[,,3,idxIter]
+  varNhMat[,,idxIter] <- cbind(n.var(NSH.sim[[idxIter]])$age, n.var(NSH.sim[[idxIter]])$value)
 }
 
+
 #-------------------------------------------------------------------------------
-# 10) tidying up and saving objects for next step
+# 11) tidying up and saving objects for next step
 #-------------------------------------------------------------------------------
 
 # prepare objects for MSE: 
 # stkAssessement with the current assessment, including 2018
 # newstk up to 2017
-C1 <- dim(stocks[[1]]@catch.wt)
+C1 <- dim(biol[[1]]@catch.wt)
 C1[6]<- 10
 C2 <- C1
 C2[1]<- 1
 
-dmns        <- dimnames(stocks[[1]]@harvest)
+dmns        <- dimnames(biol[[1]]@harvest)
 dmns$iter   <- 1:nits
-dmns2        <- dimnames(stocks[[1]]@catch)
+dmns2        <- dimnames(biol[[1]]@catch)
 dmns2$iter   <- 1:nits
 
 stkAssessement  <- FLStock( catch.wt=FLQuant(dim=C1,dimnames=dmns),
@@ -595,33 +592,36 @@ units(newstk) <- units(NSH)
 
 stkAssessement <- window(  stkAssessement,
                            start=an(histPeriod[1]),
-                           end=max(an(histPeriod))+1)
+                           end=max(an(histPeriod)))
 
+recFuture <- array(NA,dim=c(nits,1))
 for(idxIter in 1:nits){
-  iter(stkAssessement,idxIter)          <- stocks[[idxIter]][,c(histPeriod,projPeriod[1])]
-  iter(stkAssessement@harvest,idxIter)  <- NSH.sim[[idxIter]]@harvest
-  iter(stkAssessement@stock.n,idxIter)  <- NSH.sim[[idxIter]]@stock.n
+  iter(stkAssessement,idxIter)          <- biol[[idxIter]][,c(histPeriod)]
+  iter(newstk,idxIter)                  <- biol[[idxIter]]
   
-  iter(newstk,idxIter)                  <- stocks[[idxIter]]
+  # recruitment out of SAM for 2018
+  recFuture[idxIter] <- as.array(subset(rec(NSH.sim[[idxIter]]),year==2018)$value)
 }
 
 stkAssessement@stock <- computeStock(stkAssessement)
 
-stocks <- newstk
+biol <- newstk
 
 units(stkAssessement) <- units(NSH)
-units(stocks)         <- units(NSH)
+units(biol)         <- units(NSH)
 
 # save objects for MSE
-save(stocks, 
+save(biol, 
      surveys,
      FCPropIts,
-     fisheryFuture,
+     fishery,
      stkAssessement,
      NSH.ctrl,
      qMat,
      varCatchMat,
      varSurvMat,
+     varNhMat,
+     recFuture,
      file=file.path(outPath,paste0(assessment_name,'_init_MSE.RData')))
 
 # resetting parameters

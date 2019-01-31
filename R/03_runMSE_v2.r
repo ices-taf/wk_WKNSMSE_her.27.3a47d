@@ -51,7 +51,7 @@ source(file.path(functionPath,"MSE_assessment.R"))
 # Define MSE parameters, 
 # load objects initialized previously
 #   * Biology
-#     - stocks
+#     - biol
 #     - surveys
 #   * Fisheries
 #     - FCProp
@@ -68,7 +68,7 @@ load(file.path(outPath,paste0(assessment_name,'_parameters_MSE.RData')))
 
 strFleet    <- c('A','B','C','D')
 nFleets     <- length(strFleet)
-nAges       <- dim(stocks)[1]
+nAges       <- dim(biol)[1]
 surveyNames <- names(surveys)
 
 
@@ -156,22 +156,27 @@ TAC_var[,'Buptake']   <- Buptake
 # 5) run stf to get TAC in 2019. This is because the MP is different than what
 # was calculated during HAWG2018
 #
-# This is used to update stocks which is the bio object.
+# This is used to update biol which is the bio object.
 #
 # Note: the recruitment is inferred from SAM. This needs to be changed with a 
 # stock recruitment relationship.
 #------------------------------------------------------------------------------#
 
-recFuture <- as.array(subset(rec(stkAssessement),year==2018)$data)
+#recFuture <- as.array(subset(rec(stkAssessement),year==2018)$data)
 
+source(file.path(functionPath,"stf_ImY.R"))
 # create stf object and calculate stock in ImY
-stf <- stf_ImY( stocks,
-                fisheryFuture,
+stf <- stf_ImY( stkAssessement,
+                fishery,
                 TAC,
                 TAC_var,
                 FCPropIts,
                 recFuture, # recruitment is know in 2018 for the initial assessment
                 c('2018','2019','2020'))
+
+fishery@landings.sel[,'2018'] <- stf@harvest[,'2018']
+fishery@landings.n[,'2018']   <- stf@landings.n[,'2018']
+fishery@landings[,'2018']     <- stf@landings[,'2018']
 
 #------------------------------------------------------------------------------#
 # 6) Start running the MSE
@@ -201,6 +206,8 @@ for (iYr in an(projPeriod)){
   #
   #-------------------------------------------------------------------------------
   
+  recruitBio <- recFuture # no S-R for now
+  
   # calculate residuals to add to the catches
   resiCatch <- array(NA,dim=c(nAges,nits),
                      dimnames = list('ages' = 0:(nAges-1),'iter' = 1:nits))
@@ -210,23 +217,28 @@ for (iYr in an(projPeriod)){
                                   varCatchMat[,2,idxIter]) # residual to add to the catch
   }
   
-  # catch numbers with added residuals
-  stocks@catch.n[,DtY]  <- drop(apply(stf@catch.n[,DtY],c(1,2,4,5,6),'sum'))*exp(resiCatch)
-  stocks@catch          <- computeCatch(stocks)
+  # update F
+  biol@harvest[,DtY]  <- apply(fishery@landings.sel[,DtY],c(1,2,4,5,6),'sum')
+  
+  # catch numbers with added residuals. This is to be replaced with modelling of process error
+  biol@catch.n[,DtY]  <- drop(apply(fishery@landings.n[,DtY],c(1,2,4,5,6),'sum'))*exp(resiCatch)
+  biol@catch          <- computeCatch(biol)
   
   # landing numbers
-  stocks@landings.n[,DtY]  <- apply(stf@landings.n[,DtY],c(1,2,4,5,6),'sum')
-  stocks@landings          <- computeLandings(stocks)
+  biol@landings.n[,DtY]  <- apply(fishery@landings.n[,DtY],c(1,2,4,5,6),'sum')
+  biol@landings          <- computeLandings(biol)
   
-  # stock numbers, stock number are the same for all flets, we use 1st field here
-  stocks@stock.n[,DtY]            <- stf@stock.n[,DtY,1]
-  stocks@stock[,DtY]              <- computeStock(stf[,DtY,1])
+  # compute stock (using raw M rather than smoothed M in assessment)
+  Z <- biol@harvest[,DtY] + biol@m[,ImY]
   
-  # update F
-  stocks@harvest[,DtY]           <- apply(stf@harvest[,DtY],c(1,2,4,5,6),'sum')
+  # propagate stock number with Z, only fill first slot
+  survivors                           <- drop(biol@stock.n[,ac(an(DtY)-1),1])*exp(-drop(Z)) # stock.n is the same for all fleets in the stf object, taking first element
+  biol@stock.n[2:nAges,DtY]           <- survivors[1:(nAges-1),]
+  biol@stock.n[nAges,DtY]             <- biol@stock.n[nAges,DtY,1] + survivors[nAges,]
+  biol@stock.n[1,DtY]                 <- recruitBio
+  biol@stock[,DtY]                    <- computeStock(biol[,DtY])
   
   # update surveys
-  
   for(idxSurvey in surveyNames){
     qSelect     <- qMat[rownames(qMat) == idxSurvey,,,drop=FALSE]
     varSurv     <- varSurvMat[rownames(qMat) == idxSurvey,,,drop=FALSE]
@@ -245,10 +257,10 @@ for (iYr in an(projPeriod)){
     }
     
     # total mortality
-    Z <- stocks@m[ac(agesSurvey),DtY] + stocks@harvest[ac(agesSurvey),DtY]
+    Z <- biol@m[ac(agesSurvey),DtY] + biol@harvest[ac(agesSurvey),DtY]
     surveyProp  <- mean(c(surveys[[idxSurvey]]@range[6],surveys[[idxSurvey]]@range[7]))
     
-    surveys[[idxSurvey]]@index[,DtY] <- qSelect[,2,]*drop(exp(-Z*surveyProp)*stocks@stock.n[ac(agesSurvey),DtY])*exp(resiSurv)
+    surveys[[idxSurvey]]@index[,DtY] <- qSelect[,2,]*drop(exp(-Z*surveyProp)*biol@stock.n[ac(agesSurvey),DtY])*exp(resiSurv)
   }
   
   cat("\n Finished biology \n")
@@ -259,12 +271,20 @@ for (iYr in an(projPeriod)){
   #-------------------------------------------------------------------------------
   
   # filter stock object up to intermediate year to include biological variables
-  stkAssessement <- window(  stocks,
+  stkAssessement <- window(  biol,
                              start=an(fullPeriod[1]),
                              end=an(DtY))
   
   stkAssessement@catch.n  <- stkAssessement@landings.n
   stkAssessement@catch    <- computeCatch(stkAssessement)
+  
+  # smooth M prior to running the assessment, median filter of order 5
+  for(idxIter in 1:nits){
+    for(idxAge in 1:nAges){
+      stkAssessement@m[idxAge,,,,,idxIter] <- runmed(stkAssessement@m[idxAge,,,,,idxIter],k=5)
+    }
+  }
+  
   
   # select tuning object for assessment. filter up to terminal year
   stkAssessement.tun <- surveys
@@ -300,7 +320,7 @@ for (iYr in an(projPeriod)){
   escapeRuns      <- c(escapeRuns,ret$escapeRuns)
   stkAssessement  <- ret$stk
   
-  stkAssessement <- window(  stocks,
+  stkAssessement <- window(  biol,
                              start=an(fullPeriod[1]),
                              end=an(CtY))
   
@@ -337,18 +357,23 @@ for (iYr in an(projPeriod)){
   
   ############# setting up stf and compute Intermediate year #############
   stf <- stf_ImY( stkAssessement,
-                  fisheryFuture,
+                  fishery,
                   TAC,
                   TAC_var,
                   FCPropIts,
                   recFuture,
                   FuY)
+  
+  # update fishery object
+  fishery@landings.sel[,ImY] <- stf@harvest[,ImY]
+  fishery@landings.n[,ImY]   <- stf@landings.n[,ImY]
+  fishery@landings[,ImY]     <- stf@landings[,ImY]
 
   
   ############# Compute Forecast year #############
   # use HCR and TAC C and D fleets to define TAcs for FcY
   stf <- stf_FcY( stf,
-                  fisheryFuture,
+                  fishery,
                   TAC,
                   TAC_var,
                   FCPropIts,
@@ -357,6 +382,7 @@ for (iYr in an(projPeriod)){
                   referencePoints,
                   FuY)
   
+  # update TAC
   TAC[,FcY,,,'A'] <- stf@catch[,FcY,'A']
   TAC[,FcY,,,'B'] <- stf@catch[,FcY,'B']
 

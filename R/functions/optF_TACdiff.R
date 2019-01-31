@@ -10,10 +10,9 @@
 # Note 3: fleet B and D are combined as they examplify the same selectivity patterns
 
 optF_TACdiff      <- function( mult,         # scalor 4x1
-                               catch.wt_mf,   # catch weight at age single fleet
+                               fishery,   # catch weight at age single fleet
                                stock.n_sf,  # stock number single fleet
                                M,            # natural mortality
-                               Fsel,         # selectivity stored as FLQuant object. Normalized between 0 and 1.
                                iYr,          # year of interest
                                TACs,         # TAC FLQuant object for fleets A, B and D
                                FCProp,
@@ -28,11 +27,7 @@ optF_TACdiff      <- function( mult,         # scalor 4x1
   # compute new F using 1 scalor across ages for each fleet
   Ffleet <- array( 0, dim=c(nAges,nFleets)) # initialize array
   for(idxFleet in 1:nFleets){
-    if(strFleet[idxFleet] == 'B' || strFleet[idxFleet] == 'D'){
-      Ffleet[,idxFleet] <- Fsel[,iYr,'BD']*mult[idxFleet]
-    }else{
-      Ffleet[,idxFleet] <- Fsel[,iYr,strFleet[idxFleet]]*mult[idxFleet]
-    }
+    Ffleet[,idxFleet] <- drop(fishery@landings.sel[,iYr,strFleet[idxFleet]])*mult[idxFleet]
   }
   
   # compute Z using scaled Fs. Z = M+Ftot with Ftot = FA+FB+FC+FD.
@@ -49,11 +44,7 @@ optF_TACdiff      <- function( mult,         # scalor 4x1
   # compute catch at age (in weight)
   catchfleet <- array( 0, dim=c(nAges,nFleets)) # initialize array for catches
   for(idxFleet in 1:nFleets){
-    if(strFleet[idxFleet] == 'B' || strFleet[idxFleet] == 'D'){
-      catchfleet[,idxFleet] <- Ffleet[,idxFleet]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*catch.wt_mf[,iYr,'BD']) # I should use catch weight here
-    }else{
-      catchfleet[,idxFleet] <- Ffleet[,idxFleet]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*catch.wt_mf[,iYr,strFleet[idxFleet]]) # I should use catch weight here
-    }
+    catchfleet[,idxFleet] <- Ffleet[,idxFleet]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*fishery@landings.wt[,iYr,strFleet[idxFleet]])
   }
   
   
@@ -61,7 +52,7 @@ optF_TACdiff      <- function( mult,         # scalor 4x1
   catchfleet <- colSums(catchfleet)
   
   # compute TAC at age for the C fleet from the proportion of F
-  TAC_C_IIIa <- rowSums(Ffleet)*FCProp[iYr]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*catch.wt_mf[,iYr,'C'])
+  TAC_C_IIIa <- rowSums(Ffleet)*FCProp[iYr]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*fishery@landings.wt[,iYr,'C'])
   TAC_C_IIIa <- sum(TAC_C_IIIa)
   
   

@@ -1,7 +1,7 @@
 # NSAS MSE. Compute stf for the forecast year.
 
 stf_FcY <- function(stf,
-                    fisheryFuture,
+                    fishery,
                     TAC,
                     TAC_var,
                     FCPropIts,
@@ -44,11 +44,10 @@ stf_FcY <- function(stf,
                                   lower=rep(1e-8,4),
                                   upper=NULL,
                                   rescaleF_Ftargets,    
-                                  Fsel        = fisheryFuture[,,,'sel',,idxIter],
+                                  fishery     = fishery[,,,,,idxIter],
                                   iYr         = FcY,
                                   Ftarget     = FtargetIter[idxIter],
                                   F01         = F01Iter[idxIter],
-                                  catch.wt_mf = fisheryFuture[,,,'catch.wt',,idxIter],
                                   stock.n_sf  = iter(stf@stock.n[,,1],idxIter),       
                                   M           = iter(stf@m[,,1],idxIter),             
                                   TACs        = TAC[,,,,,idxIter],             
@@ -59,10 +58,10 @@ stf_FcY <- function(stf,
                                   jac=NULL)$par
   }
   
-  stf@harvest[,FcY,'A'] <- t(apply(fisheryFuture[,FcY,'A','sel'],1,'*',Fscalor[1,]))
-  stf@harvest[,FcY,'B'] <- t(apply(fisheryFuture[,FcY,'BD','sel'],1,'*',Fscalor[2,]))
-  stf@harvest[,FcY,'C'] <- t(apply(fisheryFuture[,FcY,'C','sel'],1,'*',Fscalor[3,]))
-  stf@harvest[,FcY,'D'] <- t(apply(fisheryFuture[,FcY,'BD','sel'],1,'*',Fscalor[4,]))
+  stf@harvest[,FcY,'A'] <- t(apply(fishery@landings.sel[,FcY,'A'],1,'*',Fscalor[1,]))
+  stf@harvest[,FcY,'B'] <- t(apply(fishery@landings.sel[,FcY,'B'],1,'*',Fscalor[2,]))
+  stf@harvest[,FcY,'C'] <- t(apply(fishery@landings.sel[,FcY,'C'],1,'*',Fscalor[3,]))
+  stf@harvest[,FcY,'D'] <- t(apply(fishery@landings.sel[,FcY,'D'],1,'*',Fscalor[4,]))
   
   harvestAll <- apply(stf@harvest[,FcY],6,'rowSums')
   

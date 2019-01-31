@@ -14,7 +14,6 @@ randBlocks <- function(fecYears,projPeriod,nits){
   for(idxIter in 1:nits){
     nYearsTemp <- saveBlcks_nYears[idxIter,
                                    !is.na(saveBlcks_nYears[idxIter,])] # select only non NaN values
-    
     # loop on non NaN values
     for(idxYear in 1:length(nYearsTemp)){
       saveBlcks_startYear[idxIter,idxYear] <- round(runif(n = 1, 
@@ -31,6 +30,7 @@ randBlocks <- function(fecYears,projPeriod,nits){
     for(idxYear in 1:nyrs){
       tempVal <- c(saveBlcks_startYear[idxIter,idxYear],
                    saveBlcks_startYear[idxIter,idxYear] + saveBlcks_nYears[idxIter,idxYear])
+      tempVal[2] <- tempVal[2]-1
       
       if(round(runif(1,0,1)) == 0) # randomize the inverse orderind of the years
         tempVal <- tempVal[2:1]
