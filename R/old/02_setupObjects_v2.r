@@ -36,7 +36,7 @@ try(setwd(path),silent=TRUE)
 dataPath      <- file.path(".","data/")
 outPath       <- file.path(".","results/")
 scriptPath    <- file.path(".","side_scripts/")
-functionPath  <- file.path(".","functions/")
+functionPath  <- file.path(".","functions/attic/")
 
 # loading function
 source(file.path(functionPath,"randBlocks.R"))
@@ -85,16 +85,7 @@ raw_M             <- raw_M[,-1]# Trim off first column as it contains 'ages'
 raw_M             <- cbind(replicate(as.numeric(colnames(raw_M)[1])-histMinYr,raw_M[,1]), raw_M)
 raw_M             <- cbind(raw_M,raw_M[,dim(raw_M)[2]])
 colnames(raw_M)   <- histMinYr:histMaxYr
-# hack to set plus group, converting M array into an FLStock object, using the setPlusGroup, then back to array
-# !!!!!! to be updated. Right now one uses an empty FLStock object. This is wrong as I think the setting of the plus group 
-# needs the catches as input
-NSHM2             <- readFLStock(file.path(dataPath,"index.txt"),no.discards=TRUE,quiet=FALSE)
-#NSHM2             <- NSH
-NSHM2@m[]         <- as.matrix(raw_M)
-pg                <- NSH@range['max']
-NSHM2             <- setPlusGroup(NSHM2,pg) # really wonder if the setPlusGroup does anything... Needs clarifying.
-raw_M             <- drop(NSHM2@m)
-raw_M             <- raw_M + 0.11
+raw_M             <- raw_M[1:9,] + 0.11 # trim age 9 and add 0.11 (assessment profiling from WKPELA)
 
 #-------------------------------------------------------------------------------
 # 3) create random samples using variance/covariance matrix
@@ -112,6 +103,7 @@ biol          <- window(window(biol,end=histMaxYr+1),start=histMinYr,end=futureM
 
 # update FLStocks object with random samples infered from variance/co-variance matrix
 for(idxIter in 1:nits){
+  print(idxIter)
   biol[[idxIter]]@catch.n                    <- biol[[idxIter]]@stock.n * biol[[idxIter]]@harvest / 
                                                   (biol[[idxIter]]@harvest + biol[[idxIter]]@m) * 
                                                   (1 - exp(-biol[[idxIter]]@harvest - biol[[idxIter]]@m)) # compute catch numbers 
@@ -166,8 +158,7 @@ for(idxIter in 1:nits){
                                                                      dim=dim(biol[[idxIter]]@landings.wt[,projPeriod]))
   
   # future natural mortality at age, on a different block chain
-  biol[[idxIter]]@m        [,projPeriod][]               <- array(raw_M[,ac(yrChainM[[idxIter]])],
-                                                                    dim=dim(biol[[idxIter]]@m[,projPeriod]))
+  biol[[idxIter]]@m        [,projPeriod][]               <- as.matrix(raw_M[,ac(yrChainM[[idxIter]])])
   
   
   # fill in landing weights
@@ -344,7 +335,7 @@ for(idxIter in 1:nits){
   
   # catches, with added error based on observation variance
   biol[[idxIter]]@catch.n[,match(as.character(yearCurrent),colnames(biol[[idxIter]]@stock.n))] <-  # filter only the current years
-                                                                                                    FSelect/Z*(1-exp(-Z))*NSelect*resi
+                                                                                                    as.matrix(FSelect/Z*(1-exp(-Z))*NSelect*resi)
   
   biol[[idxIter]]@catch <- computeCatch(biol[[idxIter]])
   #We don't believe the closure catch data, so put it to NA
@@ -352,7 +343,7 @@ for(idxIter in 1:nits){
   
   # landings, i.e. here modelled as catches without error
   biol[[idxIter]]@landings.n[,match(as.character(yearCurrent),colnames(biol[[idxIter]]@stock.n))] <-  # filter only the current years
-                                                                                                      FSelect/Z*(1-exp(-Z))*NSelect
+                                                                                                      as.matrix(FSelect/Z*(1-exp(-Z))*NSelect)
   biol[[idxIter]]@landings <- computeLandings(biol[[idxIter]])
   #We don't believe the closure catch data, so put it to NA
   #stocks[[idxIter]]@landings.n[,ac(1978:1979)]           <- NA
@@ -517,26 +508,34 @@ for(idxFleet in 1:length(fleets)){
   }
 }
 
-#-------------------------------------------------------------------------------
-# 10) process error
-# for now, we use the standard deviation in numbers to model the process error
-#-------------------------------------------------------------------------------
-
-temp <-n.var(NSH.sim[[idxIter]])
-varNhMat <- array(NA,
-                  dim=c(dim(temp)[1],
-                           2,
-                           nits),
-                     dimnames=list('fleet' = temp$fleet,
-                                   'var' = c('ages','value')))
-
-for(idxIter in 1:nits){
-  varNhMat[,,idxIter] <- cbind(n.var(NSH.sim[[idxIter]])$age, n.var(NSH.sim[[idxIter]])$value)
-}
-
+fishery@landings.sel[,'2017','A'] <- NSH3f.sam@harvest[,'2017',,,'A']
+fishery@landings.sel[,'2017','B'] <- NSH3f.sam@harvest[,'2017',,,'BD']
+fishery@landings.sel[,'2017','C'] <- NSH3f.sam@harvest[,'2017',,,'C']
+fishery@landings.sel[,'2017','D'] <- NSH3f.sam@harvest[,'2017',,,'BD']
 
 #-------------------------------------------------------------------------------
-# 11) tidying up and saving objects for next step
+# 10) Future recruitment
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+# 11) process error
+#-------------------------------------------------------------------------------
+
+#temp <-n.var(NSH.sim[[idxIter]])
+#varNhMat <- array(NA,
+#                  dim=c(dim(temp)[1],
+#                           2,
+#                           nits),
+#                     dimnames=list('fleet' = temp$fleet,
+#                                   'var' = c('ages','value')))
+
+#for(idxIter in 1:nits){
+#  varNhMat[,,idxIter] <- cbind(n.var(NSH.sim[[idxIter]])$age, n.var(NSH.sim[[idxIter]])$value)
+#}
+
+
+#-------------------------------------------------------------------------------
+# 12) tidying up and saving objects for next step
 #-------------------------------------------------------------------------------
 
 # prepare objects for MSE: 
@@ -620,9 +619,8 @@ save(biol,
      qMat,
      varCatchMat,
      varSurvMat,
-     varNhMat,
      recFuture,
-     file=file.path(outPath,paste0(assessment_name,'_init_MSE.RData')))
+     file=file.path(outPath,paste0(assessment_name,'_init_MSE_v2.RData')))
 
 # resetting parameters
 nFutureyrs          <- 20
@@ -645,4 +643,4 @@ save(n.retro.years,
      selPeriod,
      fecYears,
      nits,
-     file=file.path(outPath,paste0(assessment_name,'_parameters_MSE.RData')))
+     file=file.path(outPath,paste0(assessment_name,'_parameters_MSE_v2.RData')))

@@ -9,15 +9,15 @@
 # for this fleet, a proportion of F is used for forecast
 # Note 3: fleet B and D are combined as they examplify the same selectivity patterns
 
-optF_TACdiff      <- function( mult,         # scalor 4x1
-                               fishery,   # catch weight at age single fleet
-                               stock.n_sf,  # stock number single fleet
-                               M,            # natural mortality
-                               iYr,          # year of interest
-                               TACs,         # TAC FLQuant object for fleets A, B and D
-                               FCProp,
-                               TAC_var,
-                               recruit){  # proportion of F for the C fleet
+optF_ImY      <- function(  mult,         # scalor 4x1
+                            fishery,   # catch weight at age single fleet
+                            stock.n_sf,  # stock number single fleet
+                            M,            # natural mortality
+                            iYr,          # year of interest
+                            TACs,         # TAC FLQuant object for fleets A, B and D
+                            FCProp,
+                            TAC_var,
+                            recruit){  # proportion of F for the C fleet
   
   # start fun
   nFleets  <- dim(TACs)[5] # 4 fleets, A, B. C and D
@@ -30,23 +30,30 @@ optF_TACdiff      <- function( mult,         # scalor 4x1
     Ffleet[,idxFleet] <- drop(fishery@landings.sel[,iYr,strFleet[idxFleet]])*mult[idxFleet]
   }
   
+  #Ftot <- apply(Ffleet,1,'sum')
+  #F2up_bar <- mean(Ftot[3:length(Ftot)])
+  #print(F2up_bar)
+  
   # compute Z using scaled Fs. Z = M+Ftot with Ftot = FA+FB+FC+FD.
+  #Z <-  rowSums(Ffleet) + # use single fleet F at age
+  #      drop(M[,iYr]) # M is fleet independent and all fleet fields are the same
+  #print(drop(M[,iYr]))
+  
+  # not ideal but use F from previous year for stability, otherwise there is too much to optimize
+  #Z <-  rowSums(drop(fishery[,ac(an(iYr)-1)]@landings.sel)) + # use single fleet F at age
+  #      drop(M[,iYr]) # M is fleet independent and all fleet fields are the same
+  
   Z <-  rowSums(Ffleet) + # use single fleet F at age
         drop(M[,iYr]) # M is fleet independent and all fleet fields are the same
-  
-  
-  # propagate stock number with Z
-  survivors                 <- stock.n_sf[,ac(an(iYr)-1)]*exp(-Z)
-  stock.n_sf[2:nAges,iYr]   <- survivors[1:(nAges-1)]
-  stock.n_sf[nAges,iYr]     <- stock.n_sf[nAges,iYr] + survivors[nAges] # add plus group
-  stock.n_sf[1]             <- recruit
   
   # compute catch at age (in weight)
   catchfleet <- array( 0, dim=c(nAges,nFleets)) # initialize array for catches
   for(idxFleet in 1:nFleets){
+    #print(drop(stock.n_sf[,iYr]*fishery@landings.wt[,iYr,strFleet[idxFleet]]))
     catchfleet[,idxFleet] <- Ffleet[,idxFleet]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*fishery@landings.wt[,iYr,strFleet[idxFleet]])
   }
   
+  #print(catchfleet)
   
   # sum accross the ages
   catchfleet <- colSums(catchfleet)
@@ -55,16 +62,20 @@ optF_TACdiff      <- function( mult,         # scalor 4x1
   TAC_C_IIIa <- rowSums(Ffleet)*FCProp[iYr]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*fishery@landings.wt[,iYr,'C'])
   TAC_C_IIIa <- sum(TAC_C_IIIa)
   
+  # F target for the C fleet in NS
+  Ftarget_C <- sum(rowSums(Ffleet)*FCProp[iYr])
+  
   
   # Fill TAC objects with data on expected catches in NS
   TACs <-drop(TACs[,iYr]) # reduce object to the year of interest
+  #print(TACs)
   TAC_var <- TAC_var[iYr,]
   TACs['A'] <- TACs['A'] + TAC_var['Ctransfer']*TACs['C']
   TACs['C'] <- TAC_C_IIIa
   TACs['B'] <- TACs['B']*TAC_var['Buptake']
   TACs['D'] <- TACs['D']*TAC_var['Dsplit']*TAC_var['Duptake']
-  
 
-  res <- sqrt((drop(TACs) - catchfleet)^2)
+  res <- sqrt((c(TACs['A'],TACs['B'],Ftarget_C,TACs['D']) - c(catchfleet[1], catchfleet[2],sum(Ffleet[,3]),catchfleet[4]))^2)
+  
   return(res)
 }

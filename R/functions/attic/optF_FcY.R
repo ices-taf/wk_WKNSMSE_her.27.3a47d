@@ -1,17 +1,17 @@
 # NSAS WKNSMSE 2018
 # function to scale F fleet A and B
 
-rescaleF_Ftargets      <- function( mult,         # scalor 2x1
-                                    fishery,         # selectivity stored as FLQuant object. Normalized between 0 and 1.
-                                    iYr,
-                                    Ftarget,
-                                    F01,
-                                    stock.n_sf,  # stock number single fleet
-                                    M,            # natural mortality
-                                    TACs,         # TAC FLQuant object for fleets A, B and D
-                                    FCProp,
-                                    TAC_var,
-                                    recruit){  # proportion of F for the C fleet
+optF_FcY      <- function(  mult,         # scalor 2x1
+                            fishery,         # selectivity stored as FLQuant object. Normalized between 0 and 1.
+                            iYr,
+                            Ftarget,
+                            F01,
+                            stock.n_sf,  # stock number single fleet
+                            M,            # natural mortality
+                            TACs,         # TAC FLQuant object for fleets A, B and D
+                            FCProp,
+                            TAC_var,
+                            recruit){  # proportion of F for the C fleet
   
   
   
@@ -27,13 +27,7 @@ rescaleF_Ftargets      <- function( mult,         # scalor 2x1
   }
   
   Z <-  rowSums(Ffleet) + # use single fleet F at age
-    drop(M[,iYr]) # M is fleet independent and all fleet fields are the same
-  
-  # propagate stock number with Z
-  survivors                 <- stock.n_sf[,ac(an(iYr)-1)]*exp(-Z)
-  stock.n_sf[2:nAges,iYr]   <- survivors[1:(nAges-1)]
-  stock.n_sf[nAges,iYr]     <- stock.n_sf[nAges,iYr] + survivors[nAges] # add plus group
-  stock.n_sf[1]             <- recruit
+        drop(M[,iYr]) # M is fleet independent and all fleet fields are the same
   
   # compute catch at age (in weight)
   catchfleet <- array( 0, dim=c(nAges,nFleets)) # initialize array for catches
@@ -58,6 +52,15 @@ rescaleF_Ftargets      <- function( mult,         # scalor 2x1
   TACs <-drop(TACs[,iYr]) # reduce object to the year of interest
   TAC_var <- TAC_var[iYr,]
   TACs['D'] <- TACs['D']*TAC_var['Dsplit']*TAC_var['Duptake']
+  
+  
+  
+  A <- (1 - F2up_bar/Ftarget)^2
+  B <- (1 - F01_bar/F01)^2
+  C <-  (1 - sum(Ffleet[,3])/Ftarget_C)^2
+  D <- (1 - catchfleet[4]/TACs['D'])^2
+  
+  #res <- sqrt(c(A,B,C,D))
   
   # optimize based on Ftarget F0-1, TAC C fleet in NS, TAC D fleet in NS
   res <- sqrt((c(Ftarget,F01,Ftarget_C,TACs['D']) - c(F2up_bar, F01_bar,sum(Ffleet[,3]),catchfleet[4]))^2)

@@ -39,10 +39,10 @@ outPath       <- file.path(".","results/")
 scriptPath    <- file.path(".","side_scripts/")
 functionPath  <- file.path(".","functions/")
 
-source(file.path(functionPath,"optF_TACdiff.R"))
-source(file.path(functionPath,"rescaleF_Ftargets.R"))
 source(file.path(functionPath,"stf_ImY.R"))
+source(file.path(functionPath,"optF_ImY.R"))
 source(file.path(functionPath,"stf_FcY.R"))
+source(file.path(functionPath,"optF_FcY.R"))
 source(file.path(functionPath,"MSE_assessment.R"))
 
 #-------------------------------------------------------------------------------
@@ -60,11 +60,12 @@ source(file.path(functionPath,"MSE_assessment.R"))
 #-------------------------------------------------------------------------------
 
 # load object
-load(file.path(outPath,paste0(assessment_name,'_init_MSE.RData')))
+load(file.path(outPath,paste0(assessment_name,'_init_MSE_full.RData')))
 stkAssessement.ctrl <- NSH.ctrl
+biol@m.spwn[,ac(2018:2040)] <- 0.67
 
 # load MSE parameters
-load(file.path(outPath,paste0(assessment_name,'_parameters_MSE.RData')))
+load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_full.RData')))
 
 strFleet    <- c('A','B','C','D')
 nFleets     <- length(strFleet)
@@ -162,15 +163,13 @@ TAC_var[,'Buptake']   <- Buptake
 # stock recruitment relationship.
 #------------------------------------------------------------------------------#
 
-#recFuture <- as.array(subset(rec(stkAssessement),year==2018)$data)
-
-source(file.path(functionPath,"stf_ImY.R"))
 # create stf object and calculate stock in ImY
+##############!!!!!!!!!!!!Modify path to function folder to make this work!!!!!!!!!!!!#########
 stf <- stf_ImY( stkAssessement,
                 fishery,
                 TAC,
                 TAC_var,
-                FCPropIts,
+                catchVar[1,projPeriod,,'FCprop'],
                 recFuture, # recruitment is know in 2018 for the initial assessment
                 c('2018','2019','2020'))
 
@@ -180,8 +179,11 @@ fishery@landings[,'2018']     <- stf@landings[,'2018']
 
 #------------------------------------------------------------------------------#
 # 6) Start running the MSE
-# MSE starts in 2019
+# MSE starts in 2018
 #------------------------------------------------------------------------------#
+
+F2plusIter  <-  array(NA,dim=c(length(projPeriod),nits))
+F01Iter     <-  array(NA,dim=c(length(projPeriod),nits))
 
 escapeRuns <- numeric()
 
@@ -205,62 +207,95 @@ for (iYr in an(projPeriod)){
   # from SAM.
   #
   #-------------------------------------------------------------------------------
+  ###################################################################################
+  ############################ Recruitment ##########################################
+  ###################################################################################
+  #- in the OM predict recruitment following either ricker or segreg and multiply that prediction with sr.res
+  # e.g. yr = 2018, then ssb of 2017 produced rec in 2018
+  cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
+  if("doParallel" %in% (.packages()))
+    detach("package:doParallel",unload=TRUE)
+  if("foreach" %in% (.packages()))
+    detach("package:foreach",unload=TRUE)
+  if("iterators" %in% (.packages()))
+    detach("package:iterators",unload=TRUE)
   
-  recruitBio <- recFuture # no S-R for now
   
-  # calculate residuals to add to the catches
-  resiCatch <- array(NA,dim=c(nAges,nits),
-                     dimnames = list('ages' = 0:(nAges-1),'iter' = 1:nits))
-  for(idxIter in 1:nits){
-    resiCatch[,idxIter] <- rnorm( length(varCatchMat[,2,idxIter]), 
-                                  (1:length(varCatchMat[,2,idxIter]))*0, 
-                                  varCatchMat[,2,idxIter]) # residual to add to the catch
+  require(doParallel)
+  ncores <- detectCores()-1
+  #ncores <- ifelse(iters<ncores,nits,ncores)
+  cl <- makeCluster(ncores) #set up nodes
+  clusterEvalQ(cl,library(FLSAM))
+  clusterEvalQ(cl,library(stockassessment))
+  registerDoParallel(cl)
+  
+  r<- foreach(idxIter=(1:dims(biol)$iter)) %dopar% {
+    # cannot manage to filter Ricker and SR with doParallel
+    r1<-as.vector(ifelse( c(ssb(iter(biol[,ac(iYr-1)],idxIter)))<=params(iter(biol.sr,idxIter))["b"],
+                      params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))),
+                      params(iter(biol.sr,idxIter))["a"] * params(iter(biol.sr,idxIter))["b"]))
+    
+    r2<-as.vector(params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))) * exp(-params(iter(biol.sr,idxIter))["b"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter)))))
+    
+    c(r1,r2)
   }
   
-  # update F
+  if("doParallel" %in% (.packages()))
+    detach("package:doParallel",unload=TRUE)
+  if("foreach" %in% (.packages()))
+    detach("package:foreach",unload=TRUE)
+  if("iterators" %in% (.packages()))
+    detach("package:iterators",unload=TRUE)
+  cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
+  
+  recruitBio <- array( 0, dim=c(1,nits)) # initialize array
+  
+  for(idxIter in 1:nits){
+    if(idxIter %in% itersSR)
+      recruitBio[idxIter]<-r[[idxIter]][1]
+    if(idxIter %in% itersRI)
+      recruitBio[idxIter]<-r[[idxIter]][2]
+  }
+  
+  recruitBio     <- recruitBio * exp(drop(sr.res[,DtY]))
+  
+  ###################################################################################
+  ############################ Update F ##########################################
+  ###################################################################################
   biol@harvest[,DtY]  <- apply(fishery@landings.sel[,DtY],c(1,2,4,5,6),'sum')
   
-  # catch numbers with added residuals. This is to be replaced with modelling of process error
-  biol@catch.n[,DtY]  <- drop(apply(fishery@landings.n[,DtY],c(1,2,4,5,6),'sum'))*exp(resiCatch)
-  biol@catch          <- computeCatch(biol)
+  Z <- biol@harvest[,DtY] + biol@m[,DtY]
   
-  # landing numbers
-  biol@landings.n[,DtY]  <- apply(fishery@landings.n[,DtY],c(1,2,4,5,6),'sum')
-  biol@landings          <- computeLandings(biol)
-  
-  # compute stock (using raw M rather than smoothed M in assessment)
-  Z <- biol@harvest[,DtY] + biol@m[,ImY]
-  
+  # compute stock
   # propagate stock number with Z, only fill first slot
   survivors                           <- drop(biol@stock.n[,ac(an(DtY)-1),1])*exp(-drop(Z)) # stock.n is the same for all fleets in the stf object, taking first element
   biol@stock.n[2:nAges,DtY]           <- survivors[1:(nAges-1),]
   biol@stock.n[nAges,DtY]             <- biol@stock.n[nAges,DtY,1] + survivors[nAges,]
   biol@stock.n[1,DtY]                 <- recruitBio
+  # apply process error per cohort age 1 to 8
+  for(idxAge in 2:nAges){
+    biol@stock.n[idxAge,DtY] <- biol@stock.n[idxAge,DtY]*varProccError[idxAge-1,ac(an(DtY)-(idxAge-1))]
+  }
+  
   biol@stock[,DtY]                    <- computeStock(biol[,DtY])
+  
+  # compute catch and landings
+  biol@catch.n[,DtY]    <- drop(biol@harvest[,DtY])*drop(biol@stock.n[,DtY])*drop((1-exp(-Z))/Z)*drop(catchVar[,DtY,,'residuals'])
+  stf@landings.n[,ImY]  <- drop(biol@harvest[,DtY])*drop(biol@stock.n[,DtY])*drop((1-exp(-Z))/Z)
+  
+  biol@catch       <- computeCatch(biol)
+  biol@landings    <- computeLandings(biol)
   
   # update surveys
   for(idxSurvey in surveyNames){
-    qSelect     <- qMat[rownames(qMat) == idxSurvey,,,drop=FALSE]
-    varSurv     <- varSurvMat[rownames(qMat) == idxSurvey,,,drop=FALSE]
     agesSurvey  <- an(rownames(surveys[[idxSurvey]]@index))
-    nAgesSurvey <- length(agesSurvey)
     yearSurvey  <- an(colnames(surveys[[idxSurvey]]@index))
     
-    resiSurv    <- array(NA,
-                         dim=c(nAgesSurvey,nits),
-                         dimnames = list('ages' = agesSurvey,'iter' = 1:nits))
-    # residuals at age for the selected survey
-    for(idxIter in 1:nits){
-      resiSurv[,idxIter] <- rnorm( length(varSurv[,2,idxIter]), 
-                                    (1:length(varSurv[,2,idxIter]))*0, 
-                                    varSurv[,2,idxIter]) # residual to add to the catch
-    }
-    
-    # total mortality
-    Z <- biol@m[ac(agesSurvey),DtY] + biol@harvest[ac(agesSurvey),DtY]
     surveyProp  <- mean(c(surveys[[idxSurvey]]@range[6],surveys[[idxSurvey]]@range[7]))
     
-    surveys[[idxSurvey]]@index[,DtY] <- qSelect[,2,]*drop(exp(-Z*surveyProp)*biol@stock.n[ac(agesSurvey),DtY])*exp(resiSurv)
+    surveys[[idxSurvey]]@index[,DtY] <- drop(surveyVars[ac(agesSurvey),DtY,idxSurvey,'catchabilities'])*
+                                        drop(exp(-Z[ac(agesSurvey),DtY]*surveyProp)*
+                                        biol@stock.n[ac(agesSurvey),DtY])*drop(surveyVars[ac(agesSurvey),DtY,idxSurvey,'residuals'])
   }
   
   cat("\n Finished biology \n")
@@ -278,12 +313,45 @@ for (iYr in an(projPeriod)){
   stkAssessement@catch.n  <- stkAssessement@landings.n
   stkAssessement@catch    <- computeCatch(stkAssessement)
   
-  # smooth M prior to running the assessment, median filter of order 5
-  for(idxIter in 1:nits){
-    for(idxAge in 1:nAges){
-      stkAssessement@m[idxAge,,,,,idxIter] <- runmed(stkAssessement@m[idxAge,,,,,idxIter],k=5)
-    }
+  cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
+  
+  if("doParallel" %in% (.packages()))
+    detach("package:doParallel",unload=TRUE)
+  if("foreach" %in% (.packages()))
+    detach("package:foreach",unload=TRUE)
+  if("iterators" %in% (.packages()))
+    detach("package:iterators",unload=TRUE)
+  
+  require(doParallel)
+  ncores <- detectCores()-1
+  #ncores <- ifelse(iters<ncores,nits,ncores)
+  cl <- makeCluster(ncores) #set up nodes
+  clusterEvalQ(cl,library(FLSAM))
+  clusterEvalQ(cl,library(stockassessment))
+  registerDoParallel(cl)
+  
+  r<- foreach(idxIter=(1:dims(biol)$iter)) %dopar% {
+    A <- array(NA,dim=c(dim(stkAssessement@m)[1],dim(stkAssessement@m)[2]))
+    for(idxAge in 1:dim(stkAssessement@m)[1])
+      A[idxAge,] <- runmed(stkAssessement@m[dim(stkAssessement@m)[1],,,,,idxIter],k=5)
+    as.matrix(A)
   }
+  # smooth M prior to running the assessment, median filter of order 5
+  #for(idxIter in 1:nits){
+  #  print(idxIter)
+  #  for(idxAge in 1:nAges){
+  #    stkAssessement@m[idxAge,,,,,idxIter] <- runmed(stkAssessement@m[idxAge,,,,,idxIter],k=5)
+  #  }
+  #}
+  
+  if("doParallel" %in% (.packages()))
+    detach("package:doParallel",unload=TRUE)
+  if("foreach" %in% (.packages()))
+    detach("package:foreach",unload=TRUE)
+  if("iterators" %in% (.packages()))
+    detach("package:iterators",unload=TRUE)
+  
+  cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
   
   
   # select tuning object for assessment. filter up to terminal year
@@ -341,9 +409,9 @@ for (iYr in an(projPeriod)){
   
   # finding standard deviation on recruitment for the weighted average.
   # This is using the iterations (as no residuals)
-  recSd <- array(NA,dim=c(1,dim(stkAssessement)[2]-3),
+  recSd <- array(NA,dim=c(1,dim(stkAssessement)[2]),
                  dimnames = list('sdlogR','year' = an(fullPeriod[1]):an(DtY)))
-  for(idxYear in 1:(dim(stkAssessement)[2]-3)){
+  for(idxYear in 1:(dim(stkAssessement)[2])){
     recSd[idxYear] <- sd(log(rec(stkAssessement[,idxYear])))
   }
   
@@ -356,11 +424,12 @@ for (iYr in an(projPeriod)){
   recFuture <- as.array(drop(recFuture))
   
   ############# setting up stf and compute Intermediate year #############
+  ##############!!!!!!!!!!!!Modify path to function folder to make this work!!!!!!!!!!!!#########
   stf <- stf_ImY( stkAssessement,
                   fishery,
                   TAC,
                   TAC_var,
-                  FCPropIts,
+                  catchVar[1,projPeriod,,'FCprop'],
                   recFuture,
                   FuY)
   
@@ -372,15 +441,21 @@ for (iYr in an(projPeriod)){
   
   ############# Compute Forecast year #############
   # use HCR and TAC C and D fleets to define TAcs for FcY
-  stf <- stf_FcY( stf,
+  ##############!!!!!!!!!!!!Modify path to function folder to make this work!!!!!!!!!!!!#########
+  res <- stf_FcY( stf,
                   fishery,
                   TAC,
                   TAC_var,
-                  FCPropIts,
+                  catchVar[1,projPeriod,,'FCprop'],
                   recFuture,
                   HCR,
                   referencePoints,
                   FuY)
+  
+  stf <- res[[1]]
+  F2plusIter <- res[[2]]
+  F01Iter <- res[[3]]
+  
   
   # update TAC
   TAC[,FcY,,,'A'] <- stf@catch[,FcY,'A']

@@ -62,7 +62,7 @@ save(itersSR,itersRI,sr.res,stkMC.sr,file=file.path(outPath,"SRresiduals.RData")
 
 #- in the OM predict recruitment following either ricker or segreg and multiply that prediction with sr.res
 # e.g. yr = 2018, then ssb of 2017 produced rec in 2018
-for(i in 1:dims(stkMC)$iter){
+for(i in 1:dims(biol)$iter){
   if(i %in% itersSR)
     rec <- ifelse(c(ssb(iter(stkMC[,ac(yr-1)],i)))<=params(iter(stkMC.sr,i))["b"],
                   params(iter(stkMC.sr,i))["a"] * c(ssb(iter(stkMC[,ac(yr-1)],i))),

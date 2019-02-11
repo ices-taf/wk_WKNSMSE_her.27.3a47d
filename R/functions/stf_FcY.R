@@ -24,39 +24,97 @@ stf_FcY <- function(stf,
                    'sum')
   
   if(HCR == 'A'){
-    FtargetIter <-  array(NA,dim=c(1,nits))
+    F2plusIter <-  array(NA,dim=c(1,nits))
     F01Iter     <-  array(NA,dim=c(1,nits))
     for(idxIter in 1:nits){
       if(ssb_ImY[idxIter] <= referencePoints$Btrigger){
-        FtargetIter[idxIter]  <- referencePoints$Ftarget*ssb_ImY[idxIter]/referencePoints$Btrigger
+        F2plusIter[idxIter]  <- referencePoints$Ftarget*ssb_ImY[idxIter]/referencePoints$Btrigger
         F01Iter[idxIter]   <- referencePoints$F01*ssb_ImY[idxIter]/referencePoints$Btrigger
       }else{
-        FtargetIter[idxIter]  <- referencePoints$Ftarget
+        F2plusIter[idxIter]  <- referencePoints$Ftarget
         F01Iter[idxIter]   <- referencePoints$F01
       }
     }
   }
   
-  Fscalor <- array( 0, dim=c(nFleets,nits)) # initialize array
-  for(idxIter in 1:nits){
-    # find F for the different fleets
-    Fscalor[,idxIter] <- nls.lm(  par=runif(4), # starting point
-                                  lower=rep(1e-8,4),
-                                  upper=NULL,
-                                  rescaleF_Ftargets,    
-                                  fishery     = fishery[,,,,,idxIter],
-                                  iYr         = FcY,
-                                  Ftarget     = FtargetIter[idxIter],
-                                  F01         = F01Iter[idxIter],
-                                  stock.n_sf  = iter(stf@stock.n[,,1],idxIter),       
-                                  M           = iter(stf@m[,,1],idxIter),             
-                                  TACs        = TAC[,,,,,idxIter],             
-                                  FCProp      = FCPropIts[,idxIter],
-                                  TAC_var     = TAC_var,
-                                  recruit     = recFuture[idxIter],
-                                  nls.lm.control(ftol = (.Machine$double.eps),maxiter = 1000), # optimizer control object
-                                  jac=NULL)$par
+  if(HCR == 'B'){
+    F2plusIter <-  array(NA,dim=c(1,nits))
+    F01Iter     <-  array(NA,dim=c(1,nits))
+    for(idxIter in 1:nits){
+      if(ssb_ImY[idxIter] <= referencePoints$Btrigger && ssb_ImY[idxIter] > referencePoints$Blim){
+        F2plusIter[idxIter]  <- referencePoints$Ftarget*ssb_ImY[idxIter]/referencePoints$Btrigger
+        F01Iter[idxIter]   <- referencePoints$F01*ssb_ImY[idxIter]/referencePoints$Btrigger
+      }else if(ssb_ImY[idxIter] < referencePoints$Blim){
+        F2plusIter[idxIter] <- 0.1
+        F01Iter[idxIter]    <- 0.04
+      }else{
+        F2plusIter[idxIter]  <- referencePoints$Ftarget
+        F01Iter[idxIter]   <- referencePoints$F01
+      }
+    }
   }
+
+  # use harvest from ImY
+  Z <- drop(apply(stf@harvest[,ImY],c(1,2,4,5,6),'sum')) + drop(stf[,FcY,1]@m)
+  
+  # propagate stock number with Z, only fill first slot
+  survivors                             <- drop(stf@stock.n[,ImY,1])*exp(-Z) # stock.n is the same for all fleets in the stf object, taking first element
+  stf@stock.n[2:nAges,FcY,1]            <- survivors[1:(nAges-1),]
+  stf@stock.n[nAges,FcY,1]              <- stf[nAges,FcY,1]@stock.n + survivors[nAges,]
+  stf@stock.n[1,FcY,1]         <- recruit
+  
+  # copy stock for all fleets
+  stf@stock.n[,FcY,2] <- stf@stock.n[,FcY,1]
+  stf@stock.n[,FcY,3] <- stf@stock.n[,FcY,1]
+  stf@stock.n[,FcY,4] <- stf@stock.n[,FcY,1]
+  
+  if("doParallel" %in% (.packages()))
+    detach("package:doParallel",unload=TRUE)
+  if("foreach" %in% (.packages()))
+    detach("package:foreach",unload=TRUE)
+  if("iterators" %in% (.packages()))
+    detach("package:iterators",unload=TRUE)
+  
+  require(doParallel)
+  ncores <- detectCores()-1
+  #ncores <- ifelse(iters<ncores,nits,ncores)
+  cl <- makeCluster(ncores) #set up nodes
+  clusterEvalQ(cl,library(FLSAM))
+  clusterEvalQ(cl,library(stockassessment))
+  clusterEvalQ(cl,library(minpack.lm))
+  clusterEvalQ(cl,source('E:/wk_WKNSMSE_her.27.3a47d/R/functions/optF_FcY.R'))
+  clusterEvalQ(cl,library(stats))
+  clusterEvalQ(cl,library(FLEDA))
+  registerDoParallel(cl)
+  
+  r<- foreach(idxIter=1:nits) %dopar% {nls.lm(  par=runif(4), # starting point
+                                                lower=rep(1e-8,4),
+                                                upper=c(1,1,1,1),
+                                                optF_FcY,    
+                                                fishery     = fishery[,,,,,idxIter],
+                                                iYr         = FcY,
+                                                Ftarget     = F2plusIter[idxIter],
+                                                F01         = F01Iter[idxIter],
+                                                stock.n_sf  = iter(stf@stock.n[,,1],idxIter),       
+                                                M           = iter(stf@m[,,1],idxIter),             
+                                                TACs        = TAC[,,,,,idxIter],             
+                                                FCProp      = iter(FCPropIts,idxIter),
+                                                TAC_var     = TAC_var,
+                                                recruit     = recFuture[idxIter],
+                                                nls.lm.control(ftol = (.Machine$double.eps),maxiter = 1000), # optimizer control object
+                                                jac=NULL)$par
+  }
+  
+  if("doParallel" %in% (.packages()))
+    detach("package:doParallel",unload=TRUE)
+  if("foreach" %in% (.packages()))
+    detach("package:foreach",unload=TRUE)
+  if("iterators" %in% (.packages()))
+    detach("package:iterators",unload=TRUE)
+  
+  Fscalor <- array( 0, dim=c(nFleets,nits)) # initialize array
+  
+  for(idxIter in 1:nits){Fscalor[,idxIter]<-r[[idxIter]]}
   
   stf@harvest[,FcY,'A'] <- t(apply(fishery@landings.sel[,FcY,'A'],1,'*',Fscalor[1,]))
   stf@harvest[,FcY,'B'] <- t(apply(fishery@landings.sel[,FcY,'B'],1,'*',Fscalor[2,]))
@@ -66,17 +124,6 @@ stf_FcY <- function(stf,
   harvestAll <- apply(stf@harvest[,FcY],6,'rowSums')
   
   Z <- harvestAll + drop(stf[,FcY,1]@m)
-  
-  # propagate stock number with Z, only fill first slot
-  survivors                             <- drop(stf@stock.n[,ac(an(FcY)-1),1])*exp(-Z) # stock.n is the same for all fleets in the stf object, taking first element
-  stf@stock.n[2:nAges,FcY,1]            <- survivors[1:(nAges-1),]
-  stf@stock.n[nAges,FcY,1]                <- stf[nAges,FcY,1]@stock.n + survivors[nAges,]
-  stf@stock.n[1,FcY,1]         <- recruit
-  
-  # copy stock for all fleets
-  stf@stock.n[,FcY,2] <- stf@stock.n[,FcY,1]
-  stf@stock.n[,FcY,3] <- stf@stock.n[,FcY,1]
-  stf@stock.n[,FcY,4] <- stf@stock.n[,FcY,1]
   
   Zmat <- replicate(4, Z)
   Zmat <- aperm(Zmat, c(1,3,2))
@@ -88,6 +135,6 @@ stf_FcY <- function(stf,
   stf@landings    <- computeCatch(stf)
   stf@stock       <- computeStock(stf)
   
-  return(stf)
+  return(list(stf,F2plusIter,F01Iter))
   
 }
