@@ -26,9 +26,9 @@ library(FLFleet)
 
 # define path to directory
 #path          <- "D:/Work/Herring MSE/NSAS/"
-#path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
+path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
-path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
+#path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -78,7 +78,7 @@ fullPeriod          <- c(histPeriod,projPeriod)
 recrPeriod          <- ac(2007:2017)
 selPeriod           <- ac(2007:2017)
 fecYears            <- ac(2007:2017)
-nits                <- 1000 # number of random samples
+nits                <- 10 # number of random samples
 
 # reading the raw M and applying plus group
 #raw_M             <- read.csv(file.path(dataPath,"Smoothed_span50_M_NotExtrapolated_NSASSMS2016.csv"),header=TRUE)
@@ -147,15 +147,8 @@ if(flag_saveAll)
 # 4) create FLStocks object using random samples (with future years as NA)
 #-------------------------------------------------------------------------------
 
-#load(file.path(outPath,paste0(assessment_name,'init_MSE_3.RData')))
-
-
-# update FLStocks object with the random samples infered from variance/co-variance matrix
-biol@catch.n <- biol@stock.n * biol@harvest/ (biol@harvest + biol@m) * 
-                (1 - exp(-biol@harvest - biol@m)) # compute catch numbers
-biol@catch.n[,ac(1978:1979)]    <- NA # fill in Na for the the closure catch data
-biol@landings.n                 <- biol@catch.n
 biol@harvest.spwn[,projPeriod]  <- biol@harvest.spwn[,ac(histMaxYr)] # propagate Fprop before spawning
+biol@m.spwn[,projPeriod]        <- biol@m.spwn[,ac(histMaxYr)] # propagate Fprop before spawning
 biol@stock <- computeStock(biol)
 
 #-------------------------------------------------------------------------------
@@ -201,10 +194,47 @@ for(idxIter in 1:nits){
   biol@m[,projPeriod,,,,idxIter]            <- as.matrix( raw_M[,ac(yrChainM[[idxIter]])])
   
   # # multi fleet landing weight at age
-  fishery@landings.wt[,projPeriod,'A',,,idxIter]           <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'A']
-  fishery@landings.wt[,projPeriod,'B',,,idxIter]           <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'BD']
-  fishery@landings.wt[,projPeriod,'C',,,idxIter]           <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'C']
-  fishery@landings.wt[,projPeriod,'D',,,idxIter]           <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'BD']
+  # A fleet
+  fishery@landings.wt[,colnames(NSHs3$residual@catch.wt[,,,,'A']),
+                      'A',,,idxIter]                      <- NSHs3$residual@catch.wt[,,,,'A']
+  fishery@landings.wt[,projPeriod,'A',,,idxIter]          <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'A']
+  
+  # B fleet
+  fishery@landings.wt[,colnames(NSHs3$residual@catch.wt[,,,,'BD']),
+                      'B',,,idxIter]                      <- NSHs3$residual@catch.wt[,,,,'BD']
+  fishery@landings.wt[,projPeriod,'B',,,idxIter]          <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'BD']
+  
+  # C fleet
+  fishery@landings.wt[,colnames(NSHs3$residual@catch.wt[,,,,'C']),
+                      'C',,,idxIter]                      <- NSHs3$residual@catch.wt[,,,,'C']
+  fishery@landings.wt[,projPeriod,'C',,,idxIter]          <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'C']
+  
+  # D fleet
+  fishery@landings.wt[,colnames(NSHs3$residual@catch.wt[,,,,'BD']),
+                      'D',,,idxIter]                      <- NSHs3$residual@catch.wt[,,,,'BD']
+  fishery@landings.wt[,projPeriod,'D',,,idxIter]          <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'BD']
+  
+  # loop to delete zero weights. One uses the mean over the projected years to fill in the gaps
+  for(idxFleet in 1:dim(fishery@landings.wt)[3]){
+    for(idxAges in 1:dim(fishery@landings.wt)[1]){
+      # find indices where weights are 0
+      idxZeros <- which(drop(fishery@landings.wt[idxAges,
+                                                 projPeriod,
+                                                 idxFleet,,,idxIter])==0,arr.ind = T)
+      # find indices where weights are not 0
+      idxNonZeros <- which(drop(fishery@landings.wt[idxAges,
+                                                    projPeriod,
+                                                    idxFleet,,,idxIter])!=0,arr.ind = T)
+      
+      # put mean to the years where catch weight is zero
+      fishery@landings.wt[idxAges,
+                          projPeriod[idxZeros], # subset years that are zero
+                          idxFleet,,,idxIter] <- mean(drop(fishery@landings.wt[ idxAges,
+                                                                                projPeriod[idxNonZeros], # subset years that are non zero
+                                                                                idxFleet,,,idxIter]))
+      
+    }
+  }
 }
 
 # filling in catch.wt in previous years
@@ -712,7 +742,7 @@ save( biol,            # biology object
       surveys,         # survey object
       surveyVars,      # future catchabilities and residuals for the surveys
       NSH.ctrl,        # SAM control object
-      file=file.path(outPath,paste0(assessment_name,'_init_MSE_full.RData')))
+      file=file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 
 # resetting parameters
 nFutureyrs          <- 20
@@ -735,4 +765,4 @@ save(n.retro.years,
      selPeriod,
      fecYears,
      nits,
-     file=file.path(outPath,paste0(assessment_name,'_parameters_MSE_full.RData')))
+     file=file.path(outPath,paste0(assessment_name,'_parameters_MSE_',ac(nits),'.RData')))

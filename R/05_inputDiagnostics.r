@@ -69,7 +69,9 @@ load(file.path(outPath,paste0(assessment_name,'_sf_noLAI.Rdata')))
 # 2) Plotting
 #-------------------------------------------------------------------------------
 
+################################################################################
 # catch weight at age
+################################################################################
 years <- an(colnames(biol@catch.wt))
 par(mfrow=c(3,3))
 for(idxAge in 1:dim(biol@catch.wt)[1]){
@@ -80,9 +82,14 @@ for(idxAge in 1:dim(biol@catch.wt)[1]){
   polygon(c(years,rev(years)),c(Cwt[1,],rev(Cwt[3,])),col=rgb(1,0,0,0.5),lty=0)
 }
 
+################################################################################
+# catch weight at age multi-fleet
+################################################################################
+plot(iter(fishery@landings.wt[1,,2],1))
 
-
+################################################################################
 # stock weight at age
+################################################################################
 years <- an(colnames(biol@catch.wt))
 par(mfrow=c(3,3))
 for(idxAge in 1:dim(biol@catch.wt)[1]){
@@ -94,7 +101,9 @@ for(idxAge in 1:dim(biol@catch.wt)[1]){
 }
 
 
+################################################################################
 # stock weight at age
+################################################################################
 quant <- biol@stock.wt
 years <- an(colnames(quant))
 par(mfrow=c(3,3))
@@ -106,7 +115,9 @@ for(idxAge in 1:dim(biol@stock.wt)[1]){
   polygon(c(years,rev(years)),c(Swt[1,],rev(Swt[3,])),col=rgb(1,0,0,0.5),lty=0)
 }
 
+################################################################################
 # maturity at age
+################################################################################
 years <- an(colnames(biol@mat))
 par(mfrow=c(3,3))
 for(idxAge in 1:dim(biol@catch.wt)[1]){
@@ -116,3 +127,7 @@ for(idxAge in 1:dim(biol@catch.wt)[1]){
   lines(years, Swt[2,], type="l",lwd=2)
   polygon(c(years,rev(years)),c(Swt[1,],rev(Swt[3,])),col=rgb(1,0,0,0.5),lty=0)
 }
+
+
+
+
