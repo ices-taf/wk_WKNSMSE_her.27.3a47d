@@ -59,13 +59,14 @@ source(file.path(functionPath,"MSE_assessment.R"))
 #     - F sel: FAsel, FCsel, FBDsel
 #-------------------------------------------------------------------------------
 
+nits <- 10
 # load object
-load(file.path(outPath,paste0(assessment_name,'_init_MSE_full.RData')))
+load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessement.ctrl <- NSH.ctrl
 biol@m.spwn[,ac(2018:2040)] <- 0.67
 
 # load MSE parameters
-load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_full.RData')))
+load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_',ac(nits),'.RData')))
 
 strFleet    <- c('A','B','C','D')
 nFleets     <- length(strFleet)
@@ -212,7 +213,6 @@ for (iYr in an(projPeriod)){
   ###################################################################################
   #- in the OM predict recruitment following either ricker or segreg and multiply that prediction with sr.res
   # e.g. yr = 2018, then ssb of 2017 produced rec in 2018
-  cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
   
   recruitBio <- array( 0, dim=c(1,nits)) # initialize array
   
@@ -281,55 +281,15 @@ for (iYr in an(projPeriod)){
                              start=an(fullPeriod[1]),
                              end=an(DtY))
   
-  stkAssessement@catch.n  <- stkAssessement@landings.n
-  stkAssessement@catch    <- computeCatch(stkAssessement)
-  
-  #if("doParallel" %in% (.packages()))
-  #  detach("package:doParallel",unload=TRUE)
-  #if("foreach" %in% (.packages()))
-  #  detach("package:foreach",unload=TRUE)
-  #if("iterators" %in% (.packages()))
-  #  detach("package:iterators",unload=TRUE)
-  
-  #require(doParallel)
-  #ncores <- detectCores()-3
-  #ncores <- ifelse(iters<ncores,nits,ncores)
-  #cl <- makeCluster(ncores) #set up nodes
-  #clusterEvalQ(cl,library(FLSAM))
-  #clusterEvalQ(cl,library(stockassessment))
-  #registerDoParallel(cl)
-  
-  #r<- foreach(idxIter=(1:dims(biol)$iter)) %dopar% {
-  #  A <- array(NA,dim=c(dim(stkAssessement@m)[1],dim(stkAssessement@m)[2]))
-  #  for(idxAge in 1:dim(stkAssessement@m)[1])
-  #    A[idxAge,] <- runmed(stkAssessement@m[dim(stkAssessement@m)[1],,,,,idxIter],k=5)
-  #  as.matrix(A)
-  #}
-  # smooth M prior to running the assessment, median filter of order 5
-  #for(idxIter in 1:nits){
-  #  print(idxIter)
-  #  for(idxAge in 1:nAges){
-  #    stkAssessement@m[idxAge,,,,,idxIter] <- runmed(stkAssessement@m[idxAge,,,,,idxIter],k=5)
-  #  }
-  #}
-  
-  #if("doParallel" %in% (.packages()))
-  #  detach("package:doParallel",unload=TRUE)
-  #if("foreach" %in% (.packages()))
-  #  detach("package:foreach",unload=TRUE)
-  #if("iterators" %in% (.packages()))
-  #  detach("package:iterators",unload=TRUE)
-  
-  cat(paste("\n Time running Start - M smoothing",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
+  stkAssessement@landings.n <- stkAssessement@catch.n
+  stkAssessement@landings   <- computeLandings(stkAssessement)
+
   # smooth M prior to running the assessment, median filter of order 5
   for(idxIter in 1:nits){
-    print(idxIter)
     for(idxAge in 1:nAges){
       stkAssessement@m[idxAge,,,,,idxIter] <- runmed(stkAssessement@m[idxAge,,,,,idxIter],k=5)
     }
   }
-  cat(paste("\n Time running End - M smoothing",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
-  
   
   # select tuning object for assessment. filter up to terminal year
   stkAssessement.tun <- surveys
@@ -353,6 +313,11 @@ for (iYr in an(projPeriod)){
                             stkAssessement.ctrl,
                             escapeRuns)
     stkAssessement.init <- ret$resInit
+    ret <- MSE_assessment(  stkAssessement,
+                            stkAssessement.tun,
+                            stkAssessement.ctrl,
+                            escapeRuns,
+                            stkAssessement.init)
    }else{
     ret <- MSE_assessment(  stkAssessement,
                             stkAssessement.tun,
@@ -363,14 +328,8 @@ for (iYr in an(projPeriod)){
   
   # update stock assessment with results
   escapeRuns      <- c(escapeRuns,ret$escapeRuns)
+  
   stkAssessement  <- ret$stk
-  
-  stkAssessement <- window(  biol,
-                             start=an(fullPeriod[1]),
-                             end=an(CtY))
-  
-  stkAssessement[,ac(an(fullPeriod[1]):an(DtY))] <- ret$stk
-  
   stkAssessement@stock   <- computeStock(stkAssessement)
   
   cat("\n Finished stock assessment \n")
@@ -386,9 +345,9 @@ for (iYr in an(projPeriod)){
   
   # finding standard deviation on recruitment for the weighted average.
   # This is using the iterations (as no residuals)
-  recSd <- array(NA,dim=c(1,dim(stkAssessement)[2]-3),
+  recSd <- array(NA,dim=c(1,dim(stkAssessement)[2]),
                  dimnames = list('sdlogR','year' = an(fullPeriod[1]):an(DtY)))
-  for(idxYear in 1:(dim(stkAssessement)[2]-3)){
+  for(idxYear in 1:(dim(stkAssessement)[2])){
     recSd[idxYear] <- sd(log(rec(stkAssessement[,idxYear])))
   }
   

@@ -30,12 +30,17 @@ stf_ImY      <- function(stocks,
                                       end=rev(an(dms$year))[1])
   
   stf[,dms$year[1]]@harvest <- fishery@landings.sel[,dms$year[1]]
-  stf[,FuY]@catch.wt <- fishery@landings.wt[,FuY]
-  stf[,FuY]@m        <- stf[,ac(an(ImY)-1)]@m # copy M from terminal year to intermediate/forecast/continuation years
-  stf[,FuY]@stock.wt        <- stf[,ac(an(ImY)-1)]@stock.wt # copy stock.wt from terminal year to intermediate/forecast/continuation years
+  stf[,FuY]@catch.wt        <- fishery@landings.wt[,FuY]
+  stf[,FuY]@landings.wt     <- fishery@landings.wt[,FuY]
+  
+  
+  stf[,FuY]@stock.wt      <- stf[,ac(an(ImY)-1)]@stock.wt # copy stock.wt from terminal year to intermediate/forecast/continuation years
   stf[,FuY]@harvest.spwn  <- stf[,ac(an(ImY)-1)]@harvest.spwn
   stf[,FuY]@m.spwn        <- stf[,ac(an(ImY)-1)]@m.spwn
-  stf[,FuY]@mat           <- stf[,ac(an(ImY)-1)]@mat # copy maturity from terminal year to intermediate/forecast/continuation years
+  
+  
+  stf@m[,FuY,dms$unit] <- apply(stocks[,ac((an(ImY)-5):(an(ImY)-1))]@m,c(1,3,4,5,6),'mean') # m as average over last 5 years
+  stf@mat[,FuY]           <- apply(stocks[,ac((an(ImY)-3):(an(ImY)-1))]@mat,c(1,3,4,5,6),'mean') # maturity as average over last 3 years
   
   # Fill slots that have no meaning for NSAS
   stf@discards.n[]          <- 0
