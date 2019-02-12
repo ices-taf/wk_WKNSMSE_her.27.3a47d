@@ -68,73 +68,74 @@ stf_FcY <- function(stf,
   stf@stock.n[,FcY,3] <- stf@stock.n[,FcY,1]
   stf@stock.n[,FcY,4] <- stf@stock.n[,FcY,1]
   
-  #if("doParallel" %in% (.packages()))
-  #  detach("package:doParallel",unload=TRUE)
-  #if("foreach" %in% (.packages()))
-  #  detach("package:foreach",unload=TRUE)
-  #if("iterators" %in% (.packages()))
-  #  detach("package:iterators",unload=TRUE)
+  if("doParallel" %in% (.packages()))
+    detach("package:doParallel",unload=TRUE)
+  if("foreach" %in% (.packages()))
+    detach("package:foreach",unload=TRUE)
+  if("iterators" %in% (.packages()))
+    detach("package:iterators",unload=TRUE)
   
-  #require(doParallel)
-  #ncores <- detectCores()-3
+  require(doParallel)
+  ncores <- detectCores()-3
   #ncores <- ifelse(iters<ncores,nits,ncores)
-  #cl <- makeCluster(ncores) #set up nodes
-  #clusterEvalQ(cl,library(FLSAM))
-  #clusterEvalQ(cl,library(stockassessment))
-  #clusterEvalQ(cl,library(minpack.lm))
-  #clusterEvalQ(cl,source('E:/wk_WKNSMSE_her.27.3a47d/R/functions/optF_FcY.R'))
-  #clusterEvalQ(cl,library(stats))
-  #clusterEvalQ(cl,library(FLEDA))
-  #registerDoParallel(cl)
+  cl <- makeCluster(ncores) #set up nodes
+  clusterEvalQ(cl,library(FLSAM))
+  clusterEvalQ(cl,library(stockassessment))
+  clusterEvalQ(cl,library(minpack.lm))
+  clusterEvalQ(cl,source('E:/wk_WKNSMSE_her.27.3a47d/R/functions/optF_FcY.R'))
+  clusterEvalQ(cl,library(stats))
+  clusterEvalQ(cl,library(FLEDA))
+  registerDoParallel(cl)
   
-  #r<- foreach(idxIter=1:nits) %dopar% {nls.lm(  par=runif(4), # starting point
-  #                                              lower=rep(1e-8,4),
-  #                                              upper=c(1,1,1,1),
-  #                                              optF_FcY,    
-  #                                              fishery     = fishery[,,,,,idxIter],
-  #                                              iYr         = FcY,
-  #                                              Ftarget     = F2plusIter[idxIter],
-  #                                              F01         = F01Iter[idxIter],
-  #                                              stock.n_sf  = iter(stf@stock.n[,,1],idxIter),       
-  #                                              M           = iter(stf@m[,,1],idxIter),             
-  #                                              TACs        = TAC[,,,,,idxIter],             
-  #                                              FCProp      = iter(FCPropIts,idxIter),
-  #                                              TAC_var     = TAC_var,
-  #                                              recruit     = recFuture[idxIter],
-  #                                              nls.lm.control(ftol = (.Machine$double.eps),maxiter = 1000), # optimizer control object
-  #                                              jac=NULL)$par
-  #}
+  r<- foreach(idxIter=1:nits) %dopar% {nls.lm(  par=runif(4), # starting point
+                                                lower=rep(1e-8,4),
+                                                upper=c(1,1,1,1),
+                                                optF_FcY,    
+                                                fishery     = fishery[,,,,,idxIter],
+                                                iYr         = FcY,
+                                                Ftarget     = F2plusIter[idxIter],
+                                                F01         = F01Iter[idxIter],
+                                                stock.n_sf  = iter(stf@stock.n[,,1],idxIter),       
+                                                M           = iter(stf@m[,,1],idxIter),             
+                                                TACs        = TAC[,,,,,idxIter],             
+                                                FCProp      = iter(FCPropIts,idxIter),
+                                                TAC_var     = TAC_var,
+                                                recruit     = recFuture[idxIter],
+                                                nls.lm.control(ftol = (.Machine$double.eps),maxiter = 1000), # optimizer control object
+                                                jac=NULL)$par}
   
-  #if("doParallel" %in% (.packages()))
-  #  detach("package:doParallel",unload=TRUE)
-  #if("foreach" %in% (.packages()))
-  #  detach("package:foreach",unload=TRUE)
-  #if("iterators" %in% (.packages()))
-    #detach("package:iterators",unload=TRUE)
+  stopCluster(cl) 
+  
+  if("doParallel" %in% (.packages()))
+    detach("package:doParallel",unload=TRUE)
+  if("foreach" %in% (.packages()))
+    detach("package:foreach",unload=TRUE)
+  if("iterators" %in% (.packages()))
+    detach("package:iterators",unload=TRUE)
   
   Fscalor <- array( 0, dim=c(nFleets,nits)) # initialize array
   
-  #for(idxIter in 1:nits){Fscalor[,idxIter]<-r[[idxIter]]}
+  for(idxIter in 1:nits){Fscalor[,idxIter]<-r[[idxIter]]}
   
   
-  for(idxIter in 1:nits){
-    Fscalor[,idxIter]<-nls.lm(  par=runif(4), # starting point
-                                lower=rep(1e-8,4),
-                                upper=c(1,1,1,1),
-                                optF_FcY,    
-                                fishery     = fishery[,,,,,idxIter],
-                                iYr         = FcY,
-                                Ftarget     = F2plusIter[idxIter],
-                                F01         = F01Iter[idxIter],
-                                stock.n_sf  = iter(stf@stock.n[,,1],idxIter),       
-                                M           = iter(stf@m[,,1],idxIter),             
-                                TACs        = TAC[,,,,,idxIter],             
-                                FCProp      = iter(FCPropIts,idxIter),
-                                TAC_var     = TAC_var,
-                                recruit     = recFuture[idxIter],
-                                nls.lm.control(ftol = (.Machine$double.eps),maxiter = 1000), # optimizer control object
-                                jac=NULL)$par
-  }
+  #for(idxIter in 1:nits){
+  #  Fscalor[,idxIter]<-nls.lm(  par=runif(4), # starting point
+  #                              lower=rep(1e-8,4),
+  #                              upper=c(1,1,1,1),
+  #                              optF_FcY,    
+  #                              fishery     = fishery[,,,,,idxIter],
+  #                              iYr         = FcY,
+  #                              Ftarget     = F2plusIter[idxIter],
+  #                              F01         = F01Iter[idxIter],
+  #                              stock.n_sf  = iter(stf@stock.n[,,1],idxIter),       
+  #                              M           = iter(stf@m[,,1],idxIter),             
+  #                              TACs        = TAC[,,,,,idxIter],             
+  #                              FCProp      = iter(FCPropIts,idxIter),
+  #                              TAC_var     = TAC_var,
+  #                              recruit     = recFuture[idxIter],
+  #                              nls.lm.control(ftol = (.Machine$double.eps),maxiter = 1000), # optimizer control object
+  #                              jac=NULL)$par
+  #}
   
   stf@harvest[,FcY,'A'] <- t(apply(fishery@landings.sel[,FcY,'A'],1,'*',Fscalor[1,]))
   stf@harvest[,FcY,'B'] <- t(apply(fishery@landings.sel[,FcY,'B'],1,'*',Fscalor[2,]))

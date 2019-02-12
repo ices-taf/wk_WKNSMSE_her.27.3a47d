@@ -213,49 +213,8 @@ for (iYr in an(projPeriod)){
   #- in the OM predict recruitment following either ricker or segreg and multiply that prediction with sr.res
   # e.g. yr = 2018, then ssb of 2017 produced rec in 2018
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
-  #if("doParallel" %in% (.packages()))
-  #  detach("package:doParallel",unload=TRUE)
-  #if("foreach" %in% (.packages()))
-  #  detach("package:foreach",unload=TRUE)
-  #if("iterators" %in% (.packages()))
-  #  detach("package:iterators",unload=TRUE)
   
-  
-  #require(doParallel)
-  #ncores <- detectCores()-3
-  #ncores <- ifelse(iters<ncores,nits,ncores)
-  #cl <- makeCluster(ncores) #set up nodes
-  #clusterEvalQ(cl,library(FLSAM))
-  #clusterEvalQ(cl,library(stockassessment))
-  #registerDoParallel(cl)
-  
-  #r<- foreach(idxIter=(1:dims(biol)$iter)) %dopar% {
-    # cannot manage to filter Ricker and SR with doParallel
-  #  r1<-as.vector(ifelse( c(ssb(iter(biol[,ac(iYr-1)],idxIter)))<=params(iter(biol.sr,idxIter))["b"],
-  #                    params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))),
-  #                    params(iter(biol.sr,idxIter))["a"] * params(iter(biol.sr,idxIter))["b"]))
-    
-  #  r2<-as.vector(params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))) * exp(-params(iter(biol.sr,idxIter))["b"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter)))))
-    
-  #  c(r1,r2)
-  #}
-  
-  #if("doParallel" %in% (.packages()))
-  #  detach("package:doParallel",unload=TRUE)
-  #if("foreach" %in% (.packages()))
-  #  detach("package:foreach",unload=TRUE)
-  #if("iterators" %in% (.packages()))
-  #  detach("package:iterators",unload=TRUE)
-  #cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
-  
-  #recruitBio <- array( 0, dim=c(1,nits)) # initialize array
-  
-  #for(idxIter in 1:nits){
-  #  if(idxIter %in% itersSR)
-  #    recruitBio[idxIter]<-r[[idxIter]][1]
-  #  if(idxIter %in% itersRI)
-  #    recruitBio[idxIter]<-r[[idxIter]][2]
-  #}
+  recruitBio <- array( 0, dim=c(1,nits)) # initialize array
   
   cat(paste("\n Time running Start - recruitment",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
   for(idxIter in 1:nits){
