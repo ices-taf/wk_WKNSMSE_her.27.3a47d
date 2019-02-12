@@ -60,51 +60,68 @@ stf_ImY      <- function(stocks,
   
   ############# Compute F in intermediate year #############
   
-  if("doParallel" %in% (.packages()))
-    detach("package:doParallel",unload=TRUE)
-  if("foreach" %in% (.packages()))
-    detach("package:foreach",unload=TRUE)
-  if("iterators" %in% (.packages()))
-    detach("package:iterators",unload=TRUE)
+  #if("doParallel" %in% (.packages()))
+  #  detach("package:doParallel",unload=TRUE)
+  #if("foreach" %in% (.packages()))
+  #  detach("package:foreach",unload=TRUE)
+  #if("iterators" %in% (.packages()))
+  #  detach("package:iterators",unload=TRUE)
   
-  require(doParallel)
-  ncores <- detectCores()-1
+  #require(doParallel)
+  #ncores <- detectCores()-3
   #ncores <- ifelse(iters<ncores,nits,ncores)
-  cl <- makeCluster(ncores) #set up nodes
-  clusterEvalQ(cl,library(FLSAM))
-  clusterEvalQ(cl,library(stockassessment))
-  clusterEvalQ(cl,library(minpack.lm))
-  clusterEvalQ(cl,source('E:/wk_WKNSMSE_her.27.3a47d/R/functions/optF_ImY.R'))
-  clusterEvalQ(cl,library(stats))
-  clusterEvalQ(cl,library(FLEDA))
-  registerDoParallel(cl)
+  #cl <- makeCluster(ncores) #set up nodes
+  #clusterEvalQ(cl,library(FLSAM))
+  #clusterEvalQ(cl,library(stockassessment))
+  #clusterEvalQ(cl,library(minpack.lm))
+  #clusterEvalQ(cl,source('E:/wk_WKNSMSE_her.27.3a47d/R/functions/optF_ImY.R'))
+  #clusterEvalQ(cl,library(stats))
+  #clusterEvalQ(cl,library(FLEDA))
+  #registerDoParallel(cl)
   
   
-  r<- foreach(idxIter=1:nits) %dopar% {nls.lm(  par=runif(4), # starting point
-                                                lower=rep(1e-8,4),
-                                                upper=NULL,
-                                                optF_ImY,                                  # function to optimize
-                                                fishery     = fishery[,,,,,idxIter],       # catch weight at age single fleet. Using stock weight at age for now. How to get catch weight for 2018?
-                                                stock.n_sf  = iter(stf@stock.n[,,1],idxIter),       # stock number single fleet, taking first element, M is fleet independent
-                                                M           = iter(stf@m[,,1],idxIter),              # natural mortality, taking first element, M is fleet independent
-                                                iYr         = ImY,                              # year of interest
-                                                TACs        = TAC[,,,,,idxIter],             # TAC FLQuant object for fleets A, B and D
-                                                FCProp      = iter(FCPropIts,idxIter),
-                                                TAC_var     = TAC_var,
-                                                recruit     = recFuture[idxIter],
-                                                nls.lm.control(ftol = (.Machine$double.eps),maxiter = 1000), # optimizer control object
-                                                jac=NULL)$par}
+  #r<- foreach(idxIter=1:nits) %dopar% {nls.lm(  par=runif(4), # starting point
+  #                                              lower=rep(1e-8,4),
+  #                                              upper=NULL,
+  #                                              optF_ImY,                                  # function to optimize
+  #                                              fishery     = fishery[,,,,,idxIter],       # catch weight at age single fleet. Using stock weight at age for now. How to get catch weight for 2018?
+  #                                              stock.n_sf  = iter(stf@stock.n[,,1],idxIter),       # stock number single fleet, taking first element, M is fleet independent
+  #                                              M           = iter(stf@m[,,1],idxIter),              # natural mortality, taking first element, M is fleet independent
+  #                                              iYr         = ImY,                              # year of interest
+  #                                              TACs        = TAC[,,,,,idxIter],             # TAC FLQuant object for fleets A, B and D
+  #                                              FCProp      = iter(FCPropIts,idxIter),
+  #                                              TAC_var     = TAC_var,
+  #                                              recruit     = recFuture[idxIter],
+  #                                              nls.lm.control(ftol = (.Machine$double.eps),maxiter = 1000), # optimizer control object
+  #                                              jac=NULL)$par}
   
-  if("doParallel" %in% (.packages()))
-    detach("package:doParallel",unload=TRUE)
-  if("foreach" %in% (.packages()))
-    detach("package:foreach",unload=TRUE)
-  if("iterators" %in% (.packages()))
-    detach("package:iterators",unload=TRUE)
+  #if("doParallel" %in% (.packages()))
+  #  detach("package:doParallel",unload=TRUE)
+  #if("foreach" %in% (.packages()))
+  #  detach("package:foreach",unload=TRUE)
+  #if("iterators" %in% (.packages()))
+    #detach("package:iterators",unload=TRUE)
   
   Fscalor <- array( 0, dim=c(nFleets,nits)) # initialize array
   
-  for(idxIter in 1:nits){Fscalor[,idxIter]<-r[[idxIter]]}
+  #for(idxIter in 1:nits){Fscalor[,idxIter]<-r[[idxIter]]}
+  
+  for(idxIter in 1:nits){
+    Fscalor[,idxIter]<-nls.lm(  par=runif(4), # starting point
+                                lower=rep(1e-8,4),
+                                upper=NULL,
+                                optF_ImY,                                  # function to optimize
+                                fishery     = fishery[,,,,,idxIter],       # catch weight at age single fleet. Using stock weight at age for now. How to get catch weight for 2018?
+                                stock.n_sf  = iter(stf@stock.n[,,1],idxIter),       # stock number single fleet, taking first element, M is fleet independent
+                                M           = iter(stf@m[,,1],idxIter),              # natural mortality, taking first element, M is fleet independent
+                                iYr         = ImY,                              # year of interest
+                                TACs        = TAC[,,,,,idxIter],             # TAC FLQuant object for fleets A, B and D
+                                FCProp      = iter(FCPropIts,idxIter),
+                                TAC_var     = TAC_var,
+                                recruit     = recFuture[idxIter],
+                                nls.lm.control(ftol = (.Machine$double.eps),maxiter = 1000), # optimizer control object
+                                jac=NULL)$par
+  }
   
   #print(Fscalor)
   

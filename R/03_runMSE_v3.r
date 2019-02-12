@@ -213,51 +213,63 @@ for (iYr in an(projPeriod)){
   #- in the OM predict recruitment following either ricker or segreg and multiply that prediction with sr.res
   # e.g. yr = 2018, then ssb of 2017 produced rec in 2018
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
-  if("doParallel" %in% (.packages()))
-    detach("package:doParallel",unload=TRUE)
-  if("foreach" %in% (.packages()))
-    detach("package:foreach",unload=TRUE)
-  if("iterators" %in% (.packages()))
-    detach("package:iterators",unload=TRUE)
+  #if("doParallel" %in% (.packages()))
+  #  detach("package:doParallel",unload=TRUE)
+  #if("foreach" %in% (.packages()))
+  #  detach("package:foreach",unload=TRUE)
+  #if("iterators" %in% (.packages()))
+  #  detach("package:iterators",unload=TRUE)
   
   
-  require(doParallel)
-  ncores <- detectCores()-1
+  #require(doParallel)
+  #ncores <- detectCores()-3
   #ncores <- ifelse(iters<ncores,nits,ncores)
-  cl <- makeCluster(ncores) #set up nodes
-  clusterEvalQ(cl,library(FLSAM))
-  clusterEvalQ(cl,library(stockassessment))
-  registerDoParallel(cl)
+  #cl <- makeCluster(ncores) #set up nodes
+  #clusterEvalQ(cl,library(FLSAM))
+  #clusterEvalQ(cl,library(stockassessment))
+  #registerDoParallel(cl)
   
-  r<- foreach(idxIter=(1:dims(biol)$iter)) %dopar% {
+  #r<- foreach(idxIter=(1:dims(biol)$iter)) %dopar% {
     # cannot manage to filter Ricker and SR with doParallel
-    r1<-as.vector(ifelse( c(ssb(iter(biol[,ac(iYr-1)],idxIter)))<=params(iter(biol.sr,idxIter))["b"],
-                      params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))),
-                      params(iter(biol.sr,idxIter))["a"] * params(iter(biol.sr,idxIter))["b"]))
+  #  r1<-as.vector(ifelse( c(ssb(iter(biol[,ac(iYr-1)],idxIter)))<=params(iter(biol.sr,idxIter))["b"],
+  #                    params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))),
+  #                    params(iter(biol.sr,idxIter))["a"] * params(iter(biol.sr,idxIter))["b"]))
     
-    r2<-as.vector(params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))) * exp(-params(iter(biol.sr,idxIter))["b"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter)))))
+  #  r2<-as.vector(params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))) * exp(-params(iter(biol.sr,idxIter))["b"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter)))))
     
-    c(r1,r2)
-  }
+  #  c(r1,r2)
+  #}
   
-  if("doParallel" %in% (.packages()))
-    detach("package:doParallel",unload=TRUE)
-  if("foreach" %in% (.packages()))
-    detach("package:foreach",unload=TRUE)
-  if("iterators" %in% (.packages()))
-    detach("package:iterators",unload=TRUE)
-  cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
+  #if("doParallel" %in% (.packages()))
+  #  detach("package:doParallel",unload=TRUE)
+  #if("foreach" %in% (.packages()))
+  #  detach("package:foreach",unload=TRUE)
+  #if("iterators" %in% (.packages()))
+  #  detach("package:iterators",unload=TRUE)
+  #cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
   
-  recruitBio <- array( 0, dim=c(1,nits)) # initialize array
+  #recruitBio <- array( 0, dim=c(1,nits)) # initialize array
   
+  #for(idxIter in 1:nits){
+  #  if(idxIter %in% itersSR)
+  #    recruitBio[idxIter]<-r[[idxIter]][1]
+  #  if(idxIter %in% itersRI)
+  #    recruitBio[idxIter]<-r[[idxIter]][2]
+  #}
+  
+  cat(paste("\n Time running Start - recruitment",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
   for(idxIter in 1:nits){
     if(idxIter %in% itersSR)
-      recruitBio[idxIter]<-r[[idxIter]][1]
-    if(idxIter %in% itersRI)
-      recruitBio[idxIter]<-r[[idxIter]][2]
+      recruitBio[idxIter] <- ifelse(  c(ssb(iter(biol[,ac(iYr-1)],idxIter)))<=params(iter(biol.sr,idxIter))["b"],
+                                      params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))),
+                                      params(iter(biol.sr,idxIter))["a"] * params(iter(biol.sr,idxIter))["b"])
+    if(idxIter %in% itersRI)  
+      recruitBio[idxIter] <- params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))) * exp(-params(iter(biol.sr,idxIter))["b"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))))
   }
   
   recruitBio     <- recruitBio * exp(drop(sr.res[,DtY]))
+  
+  cat(paste("\n Time running End - recruitment",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
   
   ###################################################################################
   ############################ Update F ##########################################
@@ -313,29 +325,27 @@ for (iYr in an(projPeriod)){
   stkAssessement@catch.n  <- stkAssessement@landings.n
   stkAssessement@catch    <- computeCatch(stkAssessement)
   
-  cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
+  #if("doParallel" %in% (.packages()))
+  #  detach("package:doParallel",unload=TRUE)
+  #if("foreach" %in% (.packages()))
+  #  detach("package:foreach",unload=TRUE)
+  #if("iterators" %in% (.packages()))
+  #  detach("package:iterators",unload=TRUE)
   
-  if("doParallel" %in% (.packages()))
-    detach("package:doParallel",unload=TRUE)
-  if("foreach" %in% (.packages()))
-    detach("package:foreach",unload=TRUE)
-  if("iterators" %in% (.packages()))
-    detach("package:iterators",unload=TRUE)
-  
-  require(doParallel)
-  ncores <- detectCores()-1
+  #require(doParallel)
+  #ncores <- detectCores()-3
   #ncores <- ifelse(iters<ncores,nits,ncores)
-  cl <- makeCluster(ncores) #set up nodes
-  clusterEvalQ(cl,library(FLSAM))
-  clusterEvalQ(cl,library(stockassessment))
-  registerDoParallel(cl)
+  #cl <- makeCluster(ncores) #set up nodes
+  #clusterEvalQ(cl,library(FLSAM))
+  #clusterEvalQ(cl,library(stockassessment))
+  #registerDoParallel(cl)
   
-  r<- foreach(idxIter=(1:dims(biol)$iter)) %dopar% {
-    A <- array(NA,dim=c(dim(stkAssessement@m)[1],dim(stkAssessement@m)[2]))
-    for(idxAge in 1:dim(stkAssessement@m)[1])
-      A[idxAge,] <- runmed(stkAssessement@m[dim(stkAssessement@m)[1],,,,,idxIter],k=5)
-    as.matrix(A)
-  }
+  #r<- foreach(idxIter=(1:dims(biol)$iter)) %dopar% {
+  #  A <- array(NA,dim=c(dim(stkAssessement@m)[1],dim(stkAssessement@m)[2]))
+  #  for(idxAge in 1:dim(stkAssessement@m)[1])
+  #    A[idxAge,] <- runmed(stkAssessement@m[dim(stkAssessement@m)[1],,,,,idxIter],k=5)
+  #  as.matrix(A)
+  #}
   # smooth M prior to running the assessment, median filter of order 5
   #for(idxIter in 1:nits){
   #  print(idxIter)
@@ -344,14 +354,22 @@ for (iYr in an(projPeriod)){
   #  }
   #}
   
-  if("doParallel" %in% (.packages()))
-    detach("package:doParallel",unload=TRUE)
-  if("foreach" %in% (.packages()))
-    detach("package:foreach",unload=TRUE)
-  if("iterators" %in% (.packages()))
-    detach("package:iterators",unload=TRUE)
+  #if("doParallel" %in% (.packages()))
+  #  detach("package:doParallel",unload=TRUE)
+  #if("foreach" %in% (.packages()))
+  #  detach("package:foreach",unload=TRUE)
+  #if("iterators" %in% (.packages()))
+  #  detach("package:iterators",unload=TRUE)
   
-  cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
+  cat(paste("\n Time running Start - M smoothing",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
+  # smooth M prior to running the assessment, median filter of order 5
+  for(idxIter in 1:nits){
+    print(idxIter)
+    for(idxAge in 1:nAges){
+      stkAssessement@m[idxAge,,,,,idxIter] <- runmed(stkAssessement@m[idxAge,,,,,idxIter],k=5)
+    }
+  }
+  cat(paste("\n Time running End - M smoothing",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
   
   
   # select tuning object for assessment. filter up to terminal year
@@ -409,9 +427,9 @@ for (iYr in an(projPeriod)){
   
   # finding standard deviation on recruitment for the weighted average.
   # This is using the iterations (as no residuals)
-  recSd <- array(NA,dim=c(1,dim(stkAssessement)[2]),
+  recSd <- array(NA,dim=c(1,dim(stkAssessement)[2]-3),
                  dimnames = list('sdlogR','year' = an(fullPeriod[1]):an(DtY)))
-  for(idxYear in 1:(dim(stkAssessement)[2])){
+  for(idxYear in 1:(dim(stkAssessement)[2]-3)){
     recSd[idxYear] <- sd(log(rec(stkAssessement[,idxYear])))
   }
   
@@ -425,6 +443,7 @@ for (iYr in an(projPeriod)){
   
   ############# setting up stf and compute Intermediate year #############
   ##############!!!!!!!!!!!!Modify path to function folder to make this work!!!!!!!!!!!!#########
+  cat(paste("\n Time running Start - sft ImY",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
   stf <- stf_ImY( stkAssessement,
                   fishery,
                   TAC,
@@ -432,6 +451,7 @@ for (iYr in an(projPeriod)){
                   catchVar[1,projPeriod,,'FCprop'],
                   recFuture,
                   FuY)
+  cat(paste("\n Time running End - sft ImY",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
   
   # update fishery object
   fishery@landings.sel[,ImY] <- stf@harvest[,ImY]
@@ -442,6 +462,7 @@ for (iYr in an(projPeriod)){
   ############# Compute Forecast year #############
   # use HCR and TAC C and D fleets to define TAcs for FcY
   ##############!!!!!!!!!!!!Modify path to function folder to make this work!!!!!!!!!!!!#########
+  cat(paste("\n Time running Start - sft FcY",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
   res <- stf_FcY( stf,
                   fishery,
                   TAC,
@@ -451,6 +472,7 @@ for (iYr in an(projPeriod)){
                   HCR,
                   referencePoints,
                   FuY)
+  cat(paste("\n Time running End - sft FcY",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
   
   stf <- res[[1]]
   F2plusIter <- res[[2]]

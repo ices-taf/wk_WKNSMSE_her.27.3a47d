@@ -46,8 +46,6 @@ optF_ImY      <- function(  mult,         # scalor 4x1
   Z <-  rowSums(Ffleet) + # use single fleet F at age
         drop(M[,iYr]) # M is fleet independent and all fleet fields are the same
   
-  print('salut2')
-  
   # compute catch at age (in weight)
   catchfleet <- array( 0, dim=c(nAges,nFleets)) # initialize array for catches
   for(idxFleet in 1:nFleets){
@@ -57,8 +55,6 @@ optF_ImY      <- function(  mult,         # scalor 4x1
   
   #print(catchfleet)
   
-  
-  print('salut3')
   # sum accross the ages
   catchfleet <- colSums(catchfleet)
   
