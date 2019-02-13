@@ -234,13 +234,6 @@ for (iYr in an(projPeriod)){
   
   Z <- biol@harvest[,ac(c(an(DtY)-1,DtY))] + biol@m[,ac(c(an(DtY)-1,DtY))]
   
-  plot(apply(drop(iter(biol@stock.n[,ac(2016:2019)],8)),2,'sum'))
-  
-  plot(iter(biol@stock.n[,ac(2016:2019)],8))
-  
-  ssb_FcY               <- sum( drop(stock.n_sf[,iYr]*stock.wt_sf[,iYr])*
-                                  exp(-Ftot*drop(F.spwn[,iYr]-M[,iYr]*M.spwn[,iYr]))*drop(mats[,iYr]))
-  
   # compute stock
   # propagate stock number with Z, only fill first slot
   survivors                           <- drop(biol@stock.n[,ac(an(DtY)-1),1])*exp(-drop(Z[,ac(an(DtY)-1)])) # stock.n is the same for all fleets in the stf object, taking first element
@@ -255,8 +248,8 @@ for (iYr in an(projPeriod)){
   biol@stock[,DtY]                    <- computeStock(biol[,DtY])
   
   # compute catch and landings
-  biol@catch.n[,DtY]    <- drop(biol@harvest[,DtY])*drop(biol@stock.n[,DtY])*drop((1-exp(-Z[,DtY]))/Z[,DtY])*drop(catchVar[,DtY,,'residuals'])
-  stf@landings.n[,ImY]  <- drop(biol@harvest[,DtY])*drop(biol@stock.n[,DtY])*drop((1-exp(-Z[,DtY]))/Z[,DtY])
+  biol@catch.n[,DtY]      <- drop(biol@harvest[,DtY])*drop(biol@stock.n[,DtY])*drop((1-exp(-Z[,DtY]))/Z[,DtY])*drop(catchVar[,DtY,,'residuals'])
+  biol@landings.n[,ImY]   <- drop(biol@harvest[,DtY])*drop(biol@stock.n[,DtY])*drop((1-exp(-Z[,DtY]))/Z[,DtY])
   
   biol@catch       <- computeCatch(biol)
   biol@landings    <- computeLandings(biol)
@@ -407,6 +400,23 @@ for (iYr in an(projPeriod)){
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
 }
 
+
+
+
+plot(apply(drop(iter(biol@stock.n[,ac(2016:2019)],8)),2,'sum'))
+
+plot(iter(biol@stock[,ac(2016:2019)],8))
+ssb(iter(biol,8))
+N <- iter(biol@stock.n,8)
+wts <- iter(biol@stock.wt,8)
+Ftot <- iter(biol@harvest,8)
+F.spwn <- iter(biol@harvest.spwn,8)
+M <- iter(biol@m,8)
+M.spwn <- iter(biol@m.spwn,8)
+mats <- iter(biol@mat,8)
+ssb(iter(biol,8))
+ssb_FcY               <- sum( drop(N[,ac(iYr)]*wts[,ac(iYr)])*
+                                exp(-drop(Ftot[,ac(iYr)]*F.spwn[,ac(iYr)]-M[,ac(iYr)]*M.spwn[,ac(iYr)]))*drop(mats[,ac(iYr)]))
 
 #save.image(file=paste(outPath,runName,"_",settings$RecRegime,".RData",sep=""))
 

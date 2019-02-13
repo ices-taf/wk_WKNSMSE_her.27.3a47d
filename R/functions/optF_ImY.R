@@ -53,10 +53,10 @@ optF_ImY      <- function(  mult,         # scalor 4x1
     catchfleet[,idxFleet] <- Ffleet[,idxFleet]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*fishery@landings.wt[,iYr,strFleet[idxFleet]])
   }
   
-  #print(catchfleet)
-  
   # sum accross the ages
   catchfleet <- colSums(catchfleet)
+  
+#  print(catchfleet)
   
   # compute TAC at age for the C fleet from the proportion of F
   TAC_C_IIIa <- rowSums(Ffleet)*drop(FCProp[,iYr])/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*fishery@landings.wt[,iYr,'C'])
