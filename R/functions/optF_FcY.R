@@ -4,14 +4,18 @@
 optF_FcY      <- function(  mult,         # scalor 2x1
                             fishery,         # selectivity stored as FLQuant object. Normalized between 0 and 1.
                             iYr,
-                            Ftarget,
-                            F01,
                             stock.n_sf,  # stock number single fleet
+                            stock.wt_sf,
                             M,            # natural mortality
+                            M.spwn,
+                            F.spwn,
+                            mats,
                             TACs,         # TAC FLQuant object for fleets A, B and D
                             FCProp,
                             TAC_var,
-                            recruit){  # proportion of F for the C fleet
+                            recruit,
+                            refpoints,
+                            HCR){  # proportion of F for the C fleet
   
   
   # start fun
@@ -38,31 +42,53 @@ optF_FcY      <- function(  mult,         # scalor 2x1
   
   Ftot <- apply(Ffleet,1,'sum')
   
-  F2up_bar <- mean(Ftot[3:length(Ftot)])
+  # calculate SSB at FcY
+  ssb_FcY               <- sum( drop(stock.n_sf[,iYr]*stock.wt_sf[,iYr])*
+                                exp(-Ftot*drop(F.spwn[,iYr]-M[,iYr]*M.spwn[,iYr]))*drop(mats[,iYr]))
+
+  # calculate Ftarget and F01
+  if(HCR == 'A'){
+    if(ssb_FcY <= refpoints$Btrigger){
+      F26tar   <- refpoints$Ftarget*ssb_FcY/refpoints$Btrigger
+      F01tar   <- refpoints$F01*ssb_FcY/refpoints$Btrigger
+    }else{
+      F26tar   <- refpoints$Ftarget
+      F01tar   <- refpoints$F01
+    }
+  }
+  
+  if(HCR == 'B'){
+    if(ssb_FcY <= refpoints$Btrigger && ssb_FcY > refpoints$Blim){
+      F26tar   <- refpoints$Ftarget*ssb_FcY/refpoints$Btrigger
+      F01tar   <- refpoints$F01*ssb_FcY/refpoints$Btrigger
+    }else if(ssb_FcY < refpoints$Blim){
+      F26tar <- 0.1
+      F01tar    <- 0.04
+    }else{
+      F26tar  <- refpoints$Ftarget
+      F01tar   <- refpoints$F01
+    }
+  }
+
+  # calculate F26 and F01 for current F  
+  F26_bar <- mean(Ftot[3:7])# using F2-6 instead of F2+ - mean(Ftot[3:length(Ftot)])
   F01_bar  <- mean(Ftot[1:2])
 
   # F target for the C fleet
   Ftarget_C <- sum(rowSums(Ffleet)*drop(FCProp[,iYr]))
-  # compute TAC at age for the C fleet from the proportion of F
-  #TAC_C_IIIa <- rowSums(Ffleet)*FCProp[iYr]/Z*(1-exp(-Z))*drop(stock.n_sf[,iYr]*fishery@landings.wt[,iYr,'C'])
-  #TAC_C_IIIa <- sum(TAC_C_IIIa)
-  
-  
+
   TACs <-drop(TACs[,iYr]) # reduce object to the year of interest
   TAC_var <- TAC_var[iYr,]
   TACs['D'] <- TACs['D']*TAC_var['Dsplit']*TAC_var['Duptake']
   
-  
-  
-  #A <- (1 - F2up_bar/Ftarget)^2
-  #B <- (1 - F01_bar/F01)^2
-  #C <-  (1 - sum(Ffleet[,3])/Ftarget_C)^2
-  #D <- (1 - catchfleet[4]/TACs['D'])^2
-  
-  #res <- sqrt(c(A,B,C,D))
+  resA <- (F26_bar-F26tar)/F26tar
+  resB <- (F01_bar-F01tar)/F01tar
+  resC <- (sum(Ffleet[,3])-Ftarget_C)/Ftarget_C
+  resD <- (catchfleet[4]-TACs['D'])/TACs['D']
   
   # optimize based on Ftarget F0-1, TAC C fleet in NS, TAC D fleet in NS
-  res <- sqrt((c(Ftarget,F01,Ftarget_C,TACs['D']) - c(F2up_bar, F01_bar,sum(Ffleet[,3]),catchfleet[4]))^2)
-  
+  #res <- sqrt((c(Ftarget,F01,Ftarget_C,TACs['D']) - c(F2up_bar, F01_bar,sum(Ffleet[,3]),catchfleet[4]))^2)
+  res <- sqrt(c(resA,resB,resC,resD)^2)
+
   return(res)
 }

@@ -216,7 +216,6 @@ for (iYr in an(projPeriod)){
   
   recruitBio <- array( 0, dim=c(1,nits)) # initialize array
   
-  cat(paste("\n Time running Start - recruitment",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
   for(idxIter in 1:nits){
     if(idxIter %in% itersSR)
       recruitBio[idxIter] <- ifelse(  c(ssb(iter(biol[,ac(iYr-1)],idxIter)))<=params(iter(biol.sr,idxIter))["b"],
@@ -228,18 +227,23 @@ for (iYr in an(projPeriod)){
   
   recruitBio     <- recruitBio * exp(drop(sr.res[,DtY]))
   
-  cat(paste("\n Time running End - recruitment",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
-  
   ###################################################################################
   ############################ Update F ##########################################
   ###################################################################################
   biol@harvest[,DtY]  <- apply(fishery@landings.sel[,DtY],c(1,2,4,5,6),'sum')
   
-  Z <- biol@harvest[,DtY] + biol@m[,DtY]
+  Z <- biol@harvest[,ac(c(an(DtY)-1,DtY))] + biol@m[,ac(c(an(DtY)-1,DtY))]
+  
+  plot(apply(drop(iter(biol@stock.n[,ac(2016:2019)],8)),2,'sum'))
+  
+  plot(iter(biol@stock.n[,ac(2016:2019)],8))
+  
+  ssb_FcY               <- sum( drop(stock.n_sf[,iYr]*stock.wt_sf[,iYr])*
+                                  exp(-Ftot*drop(F.spwn[,iYr]-M[,iYr]*M.spwn[,iYr]))*drop(mats[,iYr]))
   
   # compute stock
   # propagate stock number with Z, only fill first slot
-  survivors                           <- drop(biol@stock.n[,ac(an(DtY)-1),1])*exp(-drop(Z)) # stock.n is the same for all fleets in the stf object, taking first element
+  survivors                           <- drop(biol@stock.n[,ac(an(DtY)-1),1])*exp(-drop(Z[,ac(an(DtY)-1)])) # stock.n is the same for all fleets in the stf object, taking first element
   biol@stock.n[2:nAges,DtY]           <- survivors[1:(nAges-1),]
   biol@stock.n[nAges,DtY]             <- biol@stock.n[nAges,DtY,1] + survivors[nAges,]
   biol@stock.n[1,DtY]                 <- recruitBio
@@ -251,8 +255,8 @@ for (iYr in an(projPeriod)){
   biol@stock[,DtY]                    <- computeStock(biol[,DtY])
   
   # compute catch and landings
-  biol@catch.n[,DtY]    <- drop(biol@harvest[,DtY])*drop(biol@stock.n[,DtY])*drop((1-exp(-Z))/Z)*drop(catchVar[,DtY,,'residuals'])
-  stf@landings.n[,ImY]  <- drop(biol@harvest[,DtY])*drop(biol@stock.n[,DtY])*drop((1-exp(-Z))/Z)
+  biol@catch.n[,DtY]    <- drop(biol@harvest[,DtY])*drop(biol@stock.n[,DtY])*drop((1-exp(-Z[,DtY]))/Z[,DtY])*drop(catchVar[,DtY,,'residuals'])
+  stf@landings.n[,ImY]  <- drop(biol@harvest[,DtY])*drop(biol@stock.n[,DtY])*drop((1-exp(-Z[,DtY]))/Z[,DtY])
   
   biol@catch       <- computeCatch(biol)
   biol@landings    <- computeLandings(biol)
@@ -362,6 +366,7 @@ for (iYr in an(projPeriod)){
   ############# setting up stf and compute Intermediate year #############
   ##############!!!!!!!!!!!!Modify path to function folder to make this work!!!!!!!!!!!!#########
   cat(paste("\n Time running Start - sft ImY",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
+
   stf <- stf_ImY( stkAssessement,
                   fishery,
                   TAC,
@@ -381,7 +386,8 @@ for (iYr in an(projPeriod)){
   # use HCR and TAC C and D fleets to define TAcs for FcY
   ##############!!!!!!!!!!!!Modify path to function folder to make this work!!!!!!!!!!!!#########
   cat(paste("\n Time running Start - sft FcY",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
-  res <- stf_FcY( stf,
+
+  stf <- stf_FcY( stf,
                   fishery,
                   TAC,
                   TAC_var,
@@ -390,12 +396,8 @@ for (iYr in an(projPeriod)){
                   HCR,
                   referencePoints,
                   FuY)
+  
   cat(paste("\n Time running End - sft FcY",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
-  
-  stf <- res[[1]]
-  F2plusIter <- res[[2]]
-  F01Iter <- res[[3]]
-  
   
   # update TAC
   TAC[,FcY,,,'A'] <- stf@catch[,FcY,'A']

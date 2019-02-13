@@ -47,8 +47,8 @@ stf_ImY      <- function(stocks,
   stf@discards[]            <- 0
   stf@discards.wt[]         <- 0
   
-  # compute stock in ImY, use sf harvest in previous year
-  Z <- drop(stocks@harvest[,ac(an(ImY)-1)]) + drop(stf[,ImY,1]@m)
+  # compute stock in ImY
+  Z <- drop(stocks@harvest[,ac(an(ImY)-1)]) + drop(stf[,ac(an(ImY)-1),1]@m)
   
   # propagate stock number with Z, only fill first slot
   survivors                             <- drop(stf@stock.n[,ac(an(ImY)-1),1])*exp(-Z) # stock.n is the same for all fleets in the stf object, taking first element
