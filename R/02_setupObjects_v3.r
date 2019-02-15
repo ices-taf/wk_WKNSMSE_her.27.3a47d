@@ -101,10 +101,10 @@ raw_M             <- raw_M[1:9,] + 0.11 # trim age 9 and add 0.11 (assessment pr
 NSH.sim         <- simulate(NSH,NSH.tun,NSH.ctrl,n=nits)
 names(NSH.sim)  <- paste0('iter',1:nits)
 
-C1 <- dim(NSH@catch.wt)
-C1[6]<- nits
-C2 <- C1
-C2[1]<- 1
+C1              <- dim(NSH@catch.wt)
+C1[6]           <- nits
+C2              <- C1
+C2[1]           <- 1
 
 dmns          <- dimnames(NSH@catch.wt)
 dmns$iter     <- 1:nits
@@ -137,6 +137,7 @@ for(idxIter in 1:nits){
 }
 
 biol          <- window(window(biol,end=histMaxYr+1),start=histMinYr,end=futureMaxYr) # extend the FLStock object to the full projection period
+biol@m.spwn[,ac(2018:2040)] <- 0.67
 
 if(flag_saveAll)
   save( biol,
@@ -149,7 +150,7 @@ if(flag_saveAll)
 
 biol@harvest.spwn[,projPeriod]  <- biol@harvest.spwn[,ac(histMaxYr)] # propagate Fprop before spawning
 biol@m.spwn[,projPeriod]        <- biol@m.spwn[,ac(histMaxYr)] # propagate Fprop before spawning
-biol@stock <- computeStock(biol)
+biol@stock                      <- computeStock(biol)
 
 #-------------------------------------------------------------------------------
 # 5) allocating future maturity, stock weight and M at age
@@ -167,9 +168,9 @@ biol@stock <- computeStock(biol)
 
 # define fishery object
 dmns      <- dimnames(biol@m)
-dmns$unit <- c("A","B","C","D")
+dmns$area <- c("A","B","C","D")
 
-fishery <- FLCatch(price=FLQuant(NA,dimnames=dmns))
+fishery   <- FLCatch(price=FLQuant(NA,dimnames=dmns))
 
 # generate random blocks for weight at age and maturity
 yrChain   <- randBlocks(an(fecYears),an(projPeriod),nits)
@@ -196,23 +197,23 @@ for(idxIter in 1:nits){
   # # multi fleet landing weight at age
   # A fleet
   fishery@landings.wt[,colnames(NSHs3$residual@catch.wt[,,,,'A']),
-                      'A',,,idxIter]                      <- NSHs3$residual@catch.wt[,,,,'A']
-  fishery@landings.wt[,projPeriod,'A',,,idxIter]          <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'A']
+                      ,,'A',idxIter]                      <- NSHs3$residual@catch.wt[,,,,'A']
+  fishery@landings.wt[,projPeriod,,,'A',idxIter]          <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'A']
   
   # B fleet
   fishery@landings.wt[,colnames(NSHs3$residual@catch.wt[,,,,'BD']),
-                      'B',,,idxIter]                      <- NSHs3$residual@catch.wt[,,,,'BD']
-  fishery@landings.wt[,projPeriod,'B',,,idxIter]          <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'BD']
+                      ,,'B',idxIter]                      <- NSHs3$residual@catch.wt[,,,,'BD']
+  fishery@landings.wt[,projPeriod,,,'B',idxIter]          <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'BD']
   
   # C fleet
   fishery@landings.wt[,colnames(NSHs3$residual@catch.wt[,,,,'C']),
-                      'C',,,idxIter]                      <- NSHs3$residual@catch.wt[,,,,'C']
-  fishery@landings.wt[,projPeriod,'C',,,idxIter]          <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'C']
+                      ,,'C',idxIter]                      <- NSHs3$residual@catch.wt[,,,,'C']
+  fishery@landings.wt[,projPeriod,,,'C',idxIter]          <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'C']
   
   # D fleet
   fishery@landings.wt[,colnames(NSHs3$residual@catch.wt[,,,,'BD']),
-                      'D',,,idxIter]                      <- NSHs3$residual@catch.wt[,,,,'BD']
-  fishery@landings.wt[,projPeriod,'D',,,idxIter]          <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'BD']
+                      ,,'D',idxIter]                      <- NSHs3$residual@catch.wt[,,,,'BD']
+  fishery@landings.wt[,projPeriod,,,'D',idxIter]          <- NSHs3$residual@catch.wt[,ac(yrChain[[idxIter]]),,,'BD']
   
   # loop to delete zero weights. One uses the mean over the projected years to fill in the gaps
   for(idxFleet in 1:dim(fishery@landings.wt)[3]){
@@ -220,18 +221,18 @@ for(idxIter in 1:nits){
       # find indices where weights are 0
       idxZeros <- which(drop(fishery@landings.wt[idxAges,
                                                  projPeriod,
-                                                 idxFleet,,,idxIter])==0,arr.ind = T)
+                                                 ,,idxFleet,idxIter])==0,arr.ind = T)
       # find indices where weights are not 0
       idxNonZeros <- which(drop(fishery@landings.wt[idxAges,
                                                     projPeriod,
-                                                    idxFleet,,,idxIter])!=0,arr.ind = T)
+                                                    ,,idxFleet,idxIter])!=0,arr.ind = T)
       
       # put mean to the years where catch weight is zero
       fishery@landings.wt[idxAges,
                           projPeriod[idxZeros], # subset years that are zero
-                          idxFleet,,,idxIter] <- mean(drop(fishery@landings.wt[ idxAges,
+                          ,,idxFleet,idxIter] <- mean(drop(fishery@landings.wt[ idxAges,
                                                                                 projPeriod[idxNonZeros], # subset years that are non zero
-                                                                                idxFleet,,,idxIter]))
+                                                                                ,,idxFleet,idxIter]))
       
     }
   }
@@ -240,13 +241,18 @@ for(idxIter in 1:nits){
 # filling in catch.wt in previous years
 yearsMulti <- colnames(NSHs3$residual@catch.wt)
 
-fishery@landings.wt[,yearsMulti,'A']           <- NSHs3$residual@catch.wt[,yearsMulti,,,'A']
-fishery@landings.wt[,yearsMulti,'B']           <- NSHs3$residual@catch.wt[,yearsMulti,,,'BD']
-fishery@landings.wt[,yearsMulti,'C']           <- NSHs3$residual@catch.wt[,yearsMulti,,,'C']
-fishery@landings.wt[,yearsMulti,'D']           <- NSHs3$residual@catch.wt[,yearsMulti,,,'BD']
+fishery@landings.wt[,yearsMulti,,,'A']           <- NSHs3$residual@catch.wt[,yearsMulti,,,'A']
+fishery@landings.wt[,yearsMulti,,,'B']           <- NSHs3$residual@catch.wt[,yearsMulti,,,'BD']
+fishery@landings.wt[,yearsMulti,,,'C']           <- NSHs3$residual@catch.wt[,yearsMulti,,,'C']
+fishery@landings.wt[,yearsMulti,,,'D']           <- NSHs3$residual@catch.wt[,yearsMulti,,,'BD']
+
+fishery@landings.sel[,yearsMulti,,,'A']          <- NSH3f.sam@harvest[,yearsMulti,,,'A']
+fishery@landings.sel[,yearsMulti,,,'B']          <- NSH3f.sam@harvest[,yearsMulti,,,'BD']
+fishery@landings.sel[,yearsMulti,,,'C']          <- NSH3f.sam@harvest[,yearsMulti,,,'C']
+fishery@landings.sel[,yearsMulti,,,'D']          <- NSH3f.sam@harvest[,yearsMulti,,,'BD']
 
 # landing.wt = catch.wt
-biol@landings.wt <- biol@catch.wt
+biol@landings.wt                                 <- biol@catch.wt
 
 if(flag_saveAll)
   save( biol,
@@ -616,10 +622,10 @@ for(idxFleet in 1:length(fleets)){
     # fill in final FLQuant object
     #fisheryFuture[,,fleets[idxFleet],'sel',,idxIter] <- rwF[,,,,,idxIter]
     if(fleets[idxFleet] == 'BD'){
-      fishery@landings.sel[,projPeriod,'B',,,idxIter] <- rwF[,,,,,idxIter]
-      fishery@landings.sel[,projPeriod,'D',,,idxIter] <- rwF[,,,,,idxIter]
+      fishery@landings.sel[,projPeriod,,,'B',idxIter] <- rwF[,,,,,idxIter]
+      fishery@landings.sel[,projPeriod,,,'D',idxIter] <- rwF[,,,,,idxIter]
     }else{
-      fishery@landings.sel[,projPeriod,fleets[idxFleet],,,idxIter] <- rwF[,,,,,idxIter]
+      fishery@landings.sel[,projPeriod,,,fleets[idxFleet],idxIter] <- rwF[,,,,,idxIter]
     }
   }
 }
