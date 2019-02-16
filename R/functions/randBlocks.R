@@ -62,11 +62,16 @@ randBlocks <- function(fecYears,projPeriod,nits){
     if (!is.list(yrStrngsIter[[i]]))  {
       tmp <- list()
       for (cC in 1:ncol(yrStrngsIter[[i]])) tmp[[cC]]<- yrStrngsIter[[i]][,cC]
-      yrStrngsIter[[i]] <- tmp   
+      yrStrngsIter[[i]] <- tmp
       rm(tmp)
     } 
   }
+  
   yrStrngs    <- lapply(yrStrngsIter,function(x){do.call(c,x)})
+  
+  for (i in 1:nits) {
+    yrStrngs[[i]] <- yrStrngs[[i]][1:length(projPeriod)]
+  }
   
   return(yrStrngs)
 }
