@@ -60,7 +60,7 @@ source(file.path(path,"forecastFunctions.r"))
 #     - F sel: FAsel, FCsel, FBDsel
 #-------------------------------------------------------------------------------
 
-nits                <- 10
+nits                <- 50
 # load object
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessment.ctrl <- NSH.ctrl
