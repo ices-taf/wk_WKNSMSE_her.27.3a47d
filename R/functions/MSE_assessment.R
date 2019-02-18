@@ -46,10 +46,11 @@ MSE_assessment <- function(stk0,
   
   
   #Update the stock object and store which runs to escape
+  stk0                      <- window(stk0,end=max(an(dimnames(stk0@harvest)$year))+1)
   for(ii in 1:nits){
     if(!is.na(res[[ii]]@harvest[1,1,drop=T])){
-      iter(stk0@harvest,ii) <- res[[ii]]@harvest
-      iter(stk0@stock.n,ii) <- res[[ii]]@stock.n
+      iter(stk0@harvest,ii) <- res[[ii]]@harvest[,dimnames(stk0@harvest)$year]
+      iter(stk0@stock.n,ii) <- res[[ii]]@stock.n[,dimnames(stk0@harvest)$year]
     } else {
       escapeRuns <- sort(unique(c(escapeRuns,ii)))
     }

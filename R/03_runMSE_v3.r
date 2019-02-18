@@ -59,11 +59,10 @@ source(file.path(functionPath,"MSE_assessment.R"))
 #     - F sel: FAsel, FCsel, FBDsel
 #-------------------------------------------------------------------------------
 
-nits <- 10
+nits                <- 10
 # load object
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessement.ctrl <- NSH.ctrl
-biol@m.spwn[,ac(2018:2040)] <- 0.67
 
 # load MSE parameters
 load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_',ac(nits),'.RData')))
@@ -91,7 +90,9 @@ referencePoints <- list(Fmsy = 0.26,
                         F01 = 0.05,
                         Btrigger = 1400000)
 
-HCR <- 'A'
+managementRule  <- list(HCR = "A",
+                        TACIAV="A", #"A","A+B","NA"
+                        BB = NA)
 
 #------------------------------------------------------------------------------#
 # 3) Define TACs for A, B and D fleets. 
@@ -135,24 +136,25 @@ uptakeFleets <- read.table(file.path(dataPath,'over_underfishing2017.csv'),sep =
 # need to input the split for the D fleet - ask Henrik
 
 # transfer from C fleet TAC to fleet A
-Ctransfer   <- runif(length(projPeriod)+3,min=0.4, max=0.5)    # Transfer of TAC from IIIa to IVa for C fleet in assessment year. Set between 0.4 and 0.5
+Ctransfer   <- matrix(runif((length(projPeriod)+3)*nits,min=0.4, max=0.5),nrow=nits,ncol=length(projPeriod)+3)    # Transfer of TAC from IIIa to IVa for C fleet in assessment year. Set between 0.4 and 0.5
 # update for the D fleeta
-Duptake     <- rep(1, length(projPeriod)+3) # assume full uptake for the D fleet
-Dsplit      <- rep(0.60, length(projPeriod)+3) # NSAS/WBSS split randomization based on historical records. Fixed for now, need to contact henrik
+Duptake     <- matrix(1,nrow=nits,ncol=length(projPeriod)+3)    # assume full uptake for the D fleet
+Dsplit      <- matrix(rnorm((length(projPeriod)+3)*nits,mean=0.6,sd=0.1),nrow=nits,ncol=length(projPeriod)+3)
 # update for the B fleet
-Buptake     <- rnorm (length(projPeriod)+3, 
+Buptake     <- matrix(rnorm ((length(projPeriod)+3)*nits,
                       mean(an(as.vector(uptakeFleets[2:16,3])),na.rm=TRUE), # mean over available historical values
-                      sd(an(as.vector(uptakeFleets[2:16,3])),na.rm=TRUE))   # sd over available historical values
-
+                      sd(an(as.vector(uptakeFleets[2:16,3])),na.rm=TRUE)/2),   # sd over available historical values
+                      nrow=nits,ncol=length(projPeriod)+3)
 TAC_var     <- array(NA,
-                     dim=c(length(projPeriod)+3,
+                     dim=c(length(projPeriod)+3,nits,
                            4),
                      dimnames=list('years' = ac(an(projPeriod)[1]:(an(projPeriod)[length(projPeriod)]+3)),
+                                   'iter' = 1:nits,
                                    'var' = c('Ctransfer','Duptake','Dsplit','Buptake')))
-TAC_var[,'Ctransfer'] <- Ctransfer
-TAC_var[,'Duptake']   <- Duptake
-TAC_var[,'Dsplit']    <- Dsplit
-TAC_var[,'Buptake']   <- Buptake
+TAC_var[,,'Ctransfer'] <- t(Ctransfer)
+TAC_var[,,'Duptake']   <- t(Duptake)
+TAC_var[,,'Dsplit']    <- t(Dsplit)
+TAC_var[,,'Buptake']   <- t(Buptake)
 
 #------------------------------------------------------------------------------#
 # 5) run stf to get TAC in 2019. This is because the MP is different than what
