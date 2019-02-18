@@ -29,8 +29,8 @@ library(stats)
 #path          <- "D:/Work/Herring MSE/NSAS/"
 #path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
-#path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
-path <- 'D:/git/wk_WKNSMSE_her.27.3a47d/R'
+path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
+#path <- 'D:/git/wk_WKNSMSE_her.27.3a47d/R'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -50,13 +50,13 @@ source(file.path(functionPath,"MSE_assessment.R"))
 # 2) Load objects
 #-------------------------------------------------------------------------------
 
+nits <- 1000
 # load object
-load(file.path(outPath,paste0(assessment_name,'_init_MSE_full.RData')))
+load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessement.ctrl <- NSH.ctrl
-biol@m.spwn[,ac(2018:2040)] <- 0.67
 
 # load MSE parameters
-load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_full.RData')))
+load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_',ac(nits),'.RData')))
 
 strFleet    <- c('A','B','C','D')
 nFleets     <- length(strFleet)

@@ -8,7 +8,7 @@ randNums <- function(n,minVal,maxVal,s){
     nums <- rep(NA, n)
     
     while(total < s && count < n){
-      r <- round(runif(1, min=minVal, max=maxVal))
+      r <- round(runif(1, min=minVal-0.51, max=maxVal+0.49))
       total <- total + r
       
       nums[count] <- r
