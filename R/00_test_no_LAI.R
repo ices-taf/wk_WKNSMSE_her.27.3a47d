@@ -25,7 +25,8 @@ library(FLEDA)
 #path          <- "D:/Work/Herring MSE/NSAS/"
 path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
-path <- '/home/berge057/ICES/wk_WKNSMSE_her.27.3a47d/R/'
+#path <- '/home/berge057/ICES/wk_WKNSMSE_her.27.3a47d/R/'
+path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
 assessment_name_noLAI   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
