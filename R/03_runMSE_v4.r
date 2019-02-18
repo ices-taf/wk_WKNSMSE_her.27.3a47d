@@ -92,8 +92,8 @@ referencePoints <- list(Fmsy = 0.26,
                         Btrigger = 1400000)
 
 managementRule  <- list(HCR = "A",
-                        TACIAV="A", #"A","A+B","NA"
-                        BB = NA)
+                        TACIAV="A", #"A","A+B","NULL"
+                        BB = NULL)
 
 #------------------------------------------------------------------------------#
 # 3) Define TACs for A, B and D fleets. 
@@ -179,6 +179,7 @@ for (iYr in an(projPeriod)){
   #- Update biological model to iYr
   survivors   <- stock.n(biol)[,ac(iYr-1)] * exp(-z)
   stock.n(biol)[ac((range(biol,"min")+1):range(biol,"max")),ac(iYr),,] <- survivors[-dim(survivors)[1],,,,,]@.Data
+  biol@harvest[,ac(iYr-1)] <- areaSums(landings.sel(fishery)[,ac(iYr-1),,,,])
 
   #- Update recruitment
   recruitBio <- array( 0, dim=c(1,nits)) # initialize array
@@ -264,12 +265,12 @@ for (iYr in an(projPeriod)){
   cat("\n Finished stock assessment \n")
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
 
-
   #-------------------------------------------------------------------------------
   # Forecast
   #-------------------------------------------------------------------------------
-
+  #(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementRule)
   projNSAS                  <- projectNSH(stkAssessment,fishery,iYr,TAC,histMaxYr,referencePoints,managementRule)
+  TAC[,FcY,,,c("A","B")]    <- projNSAS$TAC[,,,,c("A","B")]
   cat("\n Finished forecast \n")
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
 
@@ -281,7 +282,7 @@ for (iYr in an(projPeriod)){
   mults <- matrix(NA,nrow=nits,ncol=4)
   for(idxIter in 1:nits)
     mults[idxIter,] <- nls.lm(par=rep(1,4),TAC2sel,iYr=ImY,iBiol=biol,iFishery=fishery,iTAC=TAC,catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,1,jac=NULL,lower=rep(0,4),upper=rep(1e5,4))$par
-  landings.sel(fishery[,ac(ImY)] <- sweep(landings.sel(fishery[,ac(ImY)]),3:6,mult,"*")
+  fishery@landings.sel[,ac(ImY)] <- sweep(landings.sel(fishery[,ac(ImY)]),3:6,t(mults),"*")
 
   cat("\n Finished effort calc \n")
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))

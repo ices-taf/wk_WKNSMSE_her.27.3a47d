@@ -90,7 +90,7 @@ find.FAB_HCRB  <- function(mult,stk.=stk,f01.=f01,f26.=f26,TACS.=TACS,mpPoints.=
 #-------------------------------------------------------------------------------
 
 TAC2sel <- function(mult,iYr,iBiol,iFishery,iTAC,catchVar,TAC_var,iTer){
-  Ns  <- iBiol@stock.n[,iYr,,,,iTer,drop=T]; Ns[1] <- 3e6
+  Ns  <- iBiol@stock.n[,iYr,,,,iTer,drop=T];
   Fs  <- sweep(iFishery@landings.sel[,iYr,,,,iTer],3:6,mult,"*")[,drop=T]
   Ms  <- iBiol@m[,iYr,,,,iTer,drop=T]
   Wts <- iFishery@landings.wt[,iYr,,,,iTer,drop=T]
