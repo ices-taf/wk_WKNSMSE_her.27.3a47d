@@ -19,13 +19,13 @@ randBlocks <- function(fecYears,projPeriod,nits){
       
       if(round(runif(1,0,1)) == 0){
         saveBlcks_startYear[idxIter,idxYear] <- round(runif(n = 1, 
-                                                            min=min(an(fecYears))-0.49, 
-                                                            max=(max(an(fecYears))-nYearsTemp[idxYear])+0.49)) # random number for the starting year
+                                                            min=min(an(fecYears)), 
+                                                            max=(max(an(fecYears))-nYearsTemp[idxYear]))) # random number for the starting year
         saveBlcks_rev[idxIter,idxYear] <- 0
       }else{
         saveBlcks_startYear[idxIter,idxYear] <- round(runif(n = 1, 
-                                                            min=(min(an(fecYears))+nYearsTemp[idxYear])-0.49, 
-                                                            max=max(an(fecYears))+0.49)) # random number for the starting year
+                                                            min=(min(an(fecYears))+nYearsTemp[idxYear]), 
+                                                            max=max(an(fecYears)))) # random number for the starting year
         saveBlcks_rev[idxIter,idxYear] <- 1
       }
     }

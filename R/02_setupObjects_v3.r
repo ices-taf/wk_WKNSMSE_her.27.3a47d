@@ -29,6 +29,7 @@ library(FLFleet)
 #path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
 path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
+#path <- '/home/berge057/ICES/wk_WKNSMSE_her.27.3a47d/R/'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -78,7 +79,7 @@ fullPeriod          <- c(histPeriod,projPeriod)
 recrPeriod          <- ac(2007:2017)
 selPeriod           <- ac(2007:2017)
 fecYears            <- ac(2007:2017)
-nits                <- 50 # number of random samples
+nits                <- 1000 # number of random samples
 
 # reading the raw M and applying plus group
 #raw_M             <- read.csv(file.path(dataPath,"Smoothed_span50_M_NotExtrapolated_NSASSMS2016.csv"),header=TRUE)
@@ -634,19 +635,21 @@ for(idxFleet in 1:length(fleets)){
 # 10) Future recruitment
 #-------------------------------------------------------------------------------
 
+recPeriod <- ac(2002:2017)
+
 biol.sr <- fmle(as.FLSR(biol,model='segreg')) # just to populate the structure
 
 itersSR <- sample(1:dims(biol)$iter,round(0.15*dims(biol)$iter),replace=F)
 itersRI <- which(!(1:dims(biol)$iter) %in% itersSR)
 
 for (its in itersSR){
-  iter(params(biol.sr),its)  <- params(fmle(FLSR( rec = rec(iter(biol,its))[,ac(an(histPeriod)[2]:max(an(histPeriod)))], # rec from 1948 to 2017
-                                                  ssb = ssb(iter(biol,its))[,ac(an(histPeriod)[1]:(max(an(histPeriod))-1))], # ssb from 1947 to 2016
+  iter(params(biol.sr),its)  <- params(fmle(FLSR( rec = rec(iter(biol,its))[,ac(an(recPeriod)[2]:max(an(recPeriod)))], # rec from 1948 to 2017
+                                                  ssb = ssb(iter(biol,its))[,ac(an(recPeriod)[1]:(max(an(recPeriod))-1))], # ssb from 1947 to 2016
                                                   model='segreg')))
 }  
 for (its in itersRI){
-  iter(params(biol.sr),its)  <- params(fmle(FLSR(rec = rec(iter(biol,its))[,ac(an(histPeriod)[2]:max(an(histPeriod)))], # rec from 1948 to 2017
-                                                  ssb = ssb(iter(biol,its))[,ac(an(histPeriod)[1]:(max(an(histPeriod))-1))], # ssb from 1947 to 2016
+  iter(params(biol.sr),its)  <- params(fmle(FLSR(rec = rec(iter(biol,its))[,ac(an(recPeriod)[2]:max(an(recPeriod)))], # rec from 1948 to 2017
+                                                  ssb = ssb(iter(biol,its))[,ac(an(recPeriod)[1]:(max(an(recPeriod))-1))], # ssb from 1947 to 2016
                                                   model='ricker')))
 }
 
@@ -655,7 +658,7 @@ for (its in itersRI){
 # I want to add something that takes autocorrelation in SR relationship into account
 # to do this I use an arima model
 ### S/R residuals - with autocorrelation
-rec.res <- residuals(biol.sr)[,ac(an(histPeriod)[2]:(max(an(histPeriod)))-1)]
+rec.res <- residuals(biol.sr)[,ac(an(recPeriod)[2]:(max(an(recPeriod)))-1)]
 
 # autoregressive model order 1
 set.seed(108)
