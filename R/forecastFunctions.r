@@ -43,7 +43,7 @@ find.FAB_HCRA  <- function(mult,stk.=stk,f01.=f01,f26.=f26,TACS.=TACS,mpPoints.=
 
                     bigF              <- apply(Fs,1,sum)
                     ssb               <- sum(Ns * Swghts * exp(-bigF*Hspwns - Ms*Mspwns) * Mats)
-                    if(ssb < mpPoints.$Btrigger){
+                    if(ssb <= mpPoints.$Btrigger){
                       resA <- mpPoints.$Ftarget*ssb/mpPoints.$Btrigger
                       resB <- mpPoints.$F01*ssb/mpPoints.$Btrigger
                     }
@@ -53,7 +53,9 @@ find.FAB_HCRA  <- function(mult,stk.=stk,f01.=f01,f26.=f26,TACS.=TACS,mpPoints.=
                     }
                     fbarB     <- mean(bigF[f01.])
                     fbarA     <- mean(bigF[f26.])
-                    ret       <- c(sqrt(c((fbarA-resA)^2,(fbarB-resB)^2)^2))
+                    ret       <- -1*c(dnorm(log(fbarA),log(resA),log=T),
+                                     dnorm(log(fbarB),log(resB),log=T))
+
                  return(ret)}
 
 find.FAB_HCRB  <- function(mult,stk.=stk,f01.=f01,f26.=f26,TACS.=TACS,mpPoints.=mpPoints){
@@ -82,7 +84,8 @@ find.FAB_HCRB  <- function(mult,stk.=stk,f01.=f01,f26.=f26,TACS.=TACS,mpPoints.=
                     }
                     fbarB     <- mean(bigF[f01.])
                     fbarA     <- mean(bigF[f26.])
-                    ret       <- c(sqrt(c((fbarA-resA)^2,(fbarB-resB)^2)^2))
+                    ret       <- -1*c(dnorm(log(fbarA),log(resA),log=T),
+                                     dnorm(log(fbarB),log(resB),log=T))
                  return(ret)}
 
 #-------------------------------------------------------------------------------
@@ -102,5 +105,9 @@ TAC2sel <- function(mult,iYr,iBiol,iFishery,iTAC,catchVar,TAC_var,iTer){
   Ctarget <- sum(rowSums(Fs)*catchVar[1,iYr,,"FCprop",,iTer,drop=T])
   Dtarget <- iTAC[,iYr,,,"D",iTer,drop=T] * TAC_var[iYr,iTer,"Dsplit"] * TAC_var[iYr,iTer,"Duptake"]
 
-  ret     <- sqrt((c(Atarget,Btarget,Ctarget,Dtarget) - c(Cs[1],Cs[2],sum(Fs[,3]),Cs[4]))^2)
+  ret     <- -1*c(dnorm(log(Atarget),log(Cs[1]),log=T),
+                  dnorm(log(Btarget),log(Cs[2]),log=T),
+                  dnorm(log(Ctarget),log(sum(Fs[,3],na.rm=T)),log=T),
+                  dnorm(log(Dtarget),log(Cs[4]),log=T))
+
 return(ret)}
