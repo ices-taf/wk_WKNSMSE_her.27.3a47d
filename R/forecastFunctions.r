@@ -97,10 +97,10 @@ TAC2sel <- function(mult,iYr,iBiol,iFishery,iTAC,catchVar,TAC_var,iTer){
 
   Cs  <- colSums(sweep(sweep(Fs,1,rowSums(Fs)+Ms,"/") * Wts,1,Ns * (1-exp(-rowSums(Fs)-Ms)),"*"))
 
-  Atarget <- iTAC[,FcY,,,"A",iTer,drop=T]
-  Btarget <- iTAC[,FcY,,,"B",iTer,drop=T]
-  Ctarget <- sum(rowSums(Fs)*catchVar[1,FcY,,"FCprop",,iTer,drop=T])
-  Dtarget <- iTAC[,FcY,,,"D",iTer,drop=T] * TAC_var[FcY,iTer,"Dsplit"] * TAC_var[FcY,iTer,"Duptake"]
+  Atarget <- iTAC[,iYr,,,"A",iTer,drop=T]
+  Btarget <- iTAC[,iYr,,,"B",iTer,drop=T]
+  Ctarget <- sum(rowSums(Fs)*catchVar[1,iYr,,"FCprop",,iTer,drop=T])
+  Dtarget <- iTAC[,iYr,,,"D",iTer,drop=T] * TAC_var[iYr,iTer,"Dsplit"] * TAC_var[iYr,iTer,"Duptake"]
 
   ret     <- sqrt((c(Atarget,Btarget,Ctarget,Dtarget) - c(Cs[1],Cs[2],sum(Fs[,3]),Cs[4]))^2)
 return(ret)}

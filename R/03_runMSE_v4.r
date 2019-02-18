@@ -32,6 +32,7 @@ library(stats)
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
 #path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
 path <- 'D:/Repository/NSAS_MSE/wk_WKNSMSE_her.27.3a47d/R/'
+#path <- "/home/hintz001/wk_WKNSMSE_her.27.3a47d/R"
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -210,6 +211,8 @@ for (iYr in an(projPeriod)){
   #- Update fishery to year iYr-1
   landings.n(fishery)[,ac(iYr-1)]     <- sweep(sweep(landings.sel(fishery)[,ac(iYr-1),,,,],c(1:4,6),z,"/"),c(1:4,6),stock.n(biol)[,ac(iYr-1)]*(1-exp(-z)),"*")
 
+  print(computeLandings(fishery[,ac(iYr-1)])/TAC[,ac(iYr-1)])
+
   #-------------------------------------------------------------------------------
   # Assessment
   #-------------------------------------------------------------------------------
@@ -261,6 +264,7 @@ for (iYr in an(projPeriod)){
   escapeRuns              <- ret$escapeRuns
   stkAssessment           <- ret$stk
 
+  print(stkAssessment@stock.n[,ac(TaY)] / biol@stock.n[,ac(TaY)])
 
   cat("\n Finished stock assessment \n")
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
@@ -281,7 +285,7 @@ for (iYr in an(projPeriod)){
   #-Calculate effort accordingly (assuming constant catchability)
   mults <- matrix(NA,nrow=nits,ncol=4)
   for(idxIter in 1:nits)
-    mults[idxIter,] <- nls.lm(par=rep(1,4),TAC2sel,iYr=ImY,iBiol=biol,iFishery=fishery,iTAC=TAC,catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,1,jac=NULL,lower=rep(0,4),upper=rep(1e5,4))$par
+    mults[idxIter,] <- nls.lm(par=rep(1,4),TAC2sel,iYr=ImY,iBiol=biol[,ImY],iFishery=fishery[,ImY],iTAC=TAC[,ImY],catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,1,jac=NULL,lower=rep(0,4),upper=rep(1e5,4))$par
   fishery@landings.sel[,ac(ImY)] <- sweep(landings.sel(fishery[,ac(ImY)]),3:6,t(mults),"*")
 
   cat("\n Finished effort calc \n")
