@@ -78,7 +78,7 @@ fullPeriod          <- c(histPeriod,projPeriod)
 recrPeriod          <- ac(2007:2017)
 selPeriod           <- ac(2007:2017)
 fecYears            <- ac(2007:2017)
-nits                <- 10 # number of random samples
+nits                <- 50 # number of random samples
 
 # reading the raw M and applying plus group
 #raw_M             <- read.csv(file.path(dataPath,"Smoothed_span50_M_NotExtrapolated_NSASSMS2016.csv"),header=TRUE)
@@ -696,20 +696,20 @@ varProccError   <- FLQuant( array(  NA, # covariance matrix using a period of 10
                             dimnames=dmns)
 
 # commpute survivors
-surv <- biol@stock.n[,histPeriod]*exp(biol@harvest[,histPeriod]-biol@m[,histPeriod]) # effectively, this is age 1 to 8 in year + 1
+surv <- biol@stock.n[,histPeriod]*exp(-biol@harvest[,histPeriod]-biol@m[,histPeriod]) # effectively, this is age 1 to 8 in year + 1
 surv[dim(surv)[1]-1] <- surv[dim(surv)[1]-1] + surv[dim(surv)[1]]
 dimnames(surv)$age <- ac(1:9)
 
 # process error
-procError <-  surv[ac(1:8),histPeriod[2:length(histPeriod)]]/ # survivors age 1 to 8 (0 to 7 in surv object) year 1948 to 2017
-              biol@stock.n[ac(1:8),histPeriod[1:length(histPeriod)-1]] # numbers at age, age 1 to 8
+procError <-  surv[ac(1:8),histPeriod[1:(length(histPeriod)-1)]]/ # survivors age 1 to 8 (0 to 7 in surv object) year 1948 to 2017
+              biol@stock.n[ac(1:8),histPeriod[2:length(histPeriod)]] # numbers at age, age 1 to 8
 
 
 for(idxIter in 1:nits){
   print(paste('init step 11 process error - iter=',idxIter))
   
   # covariance accross the ages using a 10 year period of full cohorts
-  covMat  <- cov(t(FLCohort(log(procError))[,ac(2000:2009),,,,idxIter,drop=T]))
+  covMat  <- cov(t(FLCohort(log(procError))[,ac(1999:2008),,,,idxIter,drop=T]))
   # draw covariates accross the ages for each cohort
   res     <- exp(mvrnorm(length(projYearsCohort),rep(0,dim(covMat)[1]),covMat))
   
