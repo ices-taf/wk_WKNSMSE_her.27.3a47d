@@ -31,8 +31,8 @@ library(stats)
 #path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
 #path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
-path <- 'D:/Repository/NSAS_MSE/wk_WKNSMSE_her.27.3a47d/R/'
-#path <- "/home/hintz001/wk_WKNSMSE_her.27.3a47d/R"
+#path <- 'D:/Repository/NSAS_MSE/wk_WKNSMSE_her.27.3a47d/R/'
+path <- "/home/hintz001/wk_WKNSMSE_her.27.3a47d/R"
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -60,7 +60,7 @@ source(file.path(path,"forecastFunctions.r"))
 #     - F sel: FAsel, FCsel, FBDsel
 #-------------------------------------------------------------------------------
 
-nits                <- 10
+nits                <- 50
 # load object
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessment.ctrl <- NSH.ctrl
@@ -96,6 +96,13 @@ referencePoints <- list(Fmsy = 0.26,
 managementRule  <- list(HCR = "A",
                         TACIAV="A", #"A","A+B","NULL"
                         BB = NULL)
+                        
+runName         <- paste0("NSAS_Ftar_",referencePoints$Ftarget,
+                              "_Btrig_",referencePoints$Btrigger,
+                              "_HCR_",managementRule$HCR,
+                              "_TACIAV_",paste(managementRule$TACIAV,collapse=""),
+                              "_BB_",paste(managementRule$BB,collapse=""),
+                              "_",nits,"iters.RData")
 
 #------------------------------------------------------------------------------#
 # 3) Define TACs for A, B and D fleets. 
@@ -266,6 +273,7 @@ for (iYr in an(projPeriod)){
   escapeRuns              <- ret$escapeRuns
   stkAssessment           <- ret$stk
 
+  print(escapeRuns)
   print(stkAssessment@stock.n[,ac(TaY)] / biol@stock.n[,ac(TaY)])
 
   cat("\n Finished stock assessment \n")
