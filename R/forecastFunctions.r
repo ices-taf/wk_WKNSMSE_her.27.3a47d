@@ -102,12 +102,38 @@ TAC2sel <- function(mult,iYr,iBiol,iFishery,iTAC,catchVar,TAC_var,iTer){
 
   Atarget <- iTAC[,iYr,,,"A",iTer,drop=T]
   Btarget <- iTAC[,iYr,,,"B",iTer,drop=T]
-  Ctarget <- sum(rowSums(Fs)*catchVar[1,iYr,,"FCprop",,iTer,drop=T])
+  Ctarget <- mean(rowSums(Fs)*catchVar[1,iYr,,"FCprop",,iTer,drop=T])
   Dtarget <- iTAC[,iYr,,,"D",iTer,drop=T] * TAC_var[iYr,iTer,"Dsplit"] * TAC_var[iYr,iTer,"Duptake"]
 
-  ret     <- -1*c(dnorm(log(Atarget),log(Cs[1]),log=T),
-                  dnorm(log(Btarget),log(Cs[2]),log=T),
-                  dnorm(log(Ctarget),log(sum(Fs[,3],na.rm=T)),log=T),
-                  dnorm(log(Dtarget),log(Cs[4]),log=T))
+
+  ret     <- sqrt(c(Atarget - Cs[1],Btarget - Cs[2],Ctarget - mean(Fs[,3],na.rm=T),Dtarget - Cs[4])^2)
+
+
+  #ret     <- -1*c(dnorm(log(Atarget),log(Cs[1]),log=T),
+  #                dnorm(log(Btarget),log(Cs[2]),log=T),
+  #                dnorm(log(Ctarget),log(sum(Fs[,3],na.rm=T)),log=T),
+  #                dnorm(log(Dtarget),log(Cs[4]),log=T))
 
 return(ret)}
+
+#TAC2sel_V2 <- function(mult,iYr,iBiol,iFishery,iTAC,catchVar,TAC_var,iTer){
+#  Ns  <- iBiol@stock.n[,iYr,,,,iTer,drop=T];
+#  Fs  <- sweep(iFishery@landings.sel[,iYr,,,,iTer],3:6,mult,"*")[,drop=T]
+#  Ms  <- iBiol@m[,iYr,,,,iTer,drop=T]
+#  Wts <- iFishery@landings.wt[,iYr,,,,iTer,drop=T]
+#
+#  Cs  <- colSums(sweep(sweep(Fs,1,rowSums(Fs)+Ms,"/") * Wts,1,Ns * (1-exp(-rowSums(Fs)-Ms)),"*"),na.rm=T)
+#
+#  Atarget <- iTAC[,iYr,,,"A",iTer,drop=T]
+#  Btarget <- iTAC[,iYr,,,"B",iTer,drop=T]
+#  Ctarget <- mean(rowSums(Fs)*catchVar[1,iYr,,"FCprop",,iTer,drop=T],na.rm=T)
+#  Dtarget <- iTAC[,iYr,,,"D",iTer,drop=T] * TAC_var[iYr,iTer,"Dsplit"] * TAC_var[iYr,iTer,"Duptake"]
+#
+#  ret     <- sqrt(c(Atarget - Cs[1],Btarget - Cs[2],Ctarget - mean(Fs[,3],na.rm=T),Dtarget - Cs[4])^2)
+#
+#  #ret     <- -1*c(dnorm(log(Atarget),log(Cs[1]),log=T),
+#  #                dnorm(log(Btarget),log(Cs[2]),log=T),
+#  #                dnorm(log(Ctarget),log(mean(Fs[,3],na.rm=T)),log=T),
+#  #                dnorm(log(Dtarget),log(Cs[4]),log=T))
+#
+#return(sum(ret))}

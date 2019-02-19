@@ -60,10 +60,11 @@ source(file.path(path,"forecastFunctions.r"))
 #     - F sel: FAsel, FCsel, FBDsel
 #-------------------------------------------------------------------------------
 
-nits                <- 50
+nits                <- 10
 # load object
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessment.ctrl <- NSH.ctrl
+fishery@landings.sel[,projPeriod] <- sweep(fishery@landings.sel[,projPeriod],c(2:6),quantMeans(fishery@landings.sel[,projPeriod]),"/")
 
 # load MSE parameters
 load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_',ac(nits),'.RData')))
@@ -152,6 +153,7 @@ TAC_var[,,'Duptake']      <- t(Duptake)
 TAC_var[,,'Dsplit']       <- t(Dsplit)
 TAC_var[,,'Buptake']      <- t(Buptake)
 
+
 #------------------------------------------------------------------------------#
 # 2) Start running the MSE
 #------------------------------------------------------------------------------#
@@ -211,7 +213,7 @@ for (iYr in an(projPeriod)){
   #- Update fishery to year iYr-1
   landings.n(fishery)[,ac(iYr-1)]     <- sweep(sweep(landings.sel(fishery)[,ac(iYr-1),,,,],c(1:4,6),z,"/"),c(1:4,6),stock.n(biol)[,ac(iYr-1)]*(1-exp(-z)),"*")
 
-  print(iter(computeLandings(fishery[,ac(iYr-1)])/TAC[,ac(iYr-1)],40))
+  print(computeLandings(fishery[,ac(iYr-1)])/TAC[,ac(iYr-1)])
 
   #-------------------------------------------------------------------------------
   # Assessment
@@ -264,7 +266,7 @@ for (iYr in an(projPeriod)){
   escapeRuns              <- ret$escapeRuns
   stkAssessment           <- ret$stk
 
-  print(iter(stkAssessment@stock.n[,ac(TaY)] / biol@stock.n[,ac(TaY)],40))
+  print(stkAssessment@stock.n[,ac(TaY)] / biol@stock.n[,ac(TaY)])
 
   cat("\n Finished stock assessment \n")
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
@@ -285,13 +287,15 @@ for (iYr in an(projPeriod)){
   #-Calculate effort accordingly (assuming constant catchability)
   
   #- Get a good starting condition
-  TACmult <- (TAC[,ImY] / quantSums(sweep(sweep(landings.sel(fishery[,ImY]),c(1:4,6),(areaSums(landings.sel(fishery[,ImY]))+ biol@m[,ImY]),"/") * landings.wt(fishery[,ImY]),c(1:4,6),biol@stock.n[,ImY] * (1-exp(-biol@harvest[,ImY] - biol@m[,ImY])),"*")))[,drop=T]
-  TACmult[which(!is.finite(TACmult))] <- 1
-  
-  mults <- matrix(NA,nrow=nits,ncol=4)
+  #mults <- matrix(NA,nrow=nits,ncol=4)
+  #for(idxIter in 1:nits)
+  #  mults[idxIter,] <- optim(par=runif(4),fn=TAC2sel_V2,iYr=ImY,iBiol=biol[,ImY],iFishery=fishery[,ImY],iTAC=TAC[,ImY],catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,control=list(maxit=1000),lower=rep(1e-8,4),method="L-BFGS-B")$par
+
+  multso <- matrix(NA,nrow=nits,ncol=4)
   for(idxIter in 1:nits)
-    mults[idxIter,] <- nls.lm(par=TACmult[,idxIter],TAC2sel,iYr=ImY,iBiol=biol[,ImY],iFishery=fishery[,ImY],iTAC=TAC[,ImY],catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,1,jac=NULL,lower=rep(1e-8,4),upper=rep(1e5,4))$par
-  fishery@landings.sel[,ac(ImY)] <- sweep(landings.sel(fishery[,ac(ImY)]),3:6,t(mults),"*")
+    multso[idxIter,] <- nls.lm(par=runif(4),fn=TAC2sel,iYr=ImY,iBiol=biol[,ImY],iFishery=fishery[,ImY],iTAC=TAC[,ImY],catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,control=nls.lm.control(maxiter=1000),lower=rep(1e-8,4))$par
+
+  fishery@landings.sel[,ac(ImY)] <- sweep(landings.sel(fishery[,ac(ImY)]),3:6,t(multso),"*")
 
   cat("\n Finished effort calc \n")
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))

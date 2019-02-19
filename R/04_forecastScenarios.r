@@ -106,14 +106,14 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
   if(managementRule$HCR == "A"){
     for(iTer in 1:dims(stf)$iter){
       res[,iTer]              <- nls.lm(par=rep(1,2),find.FAB_HCRA,stk=stf[,FcY,c("A","B"),,,iTer],f01=f01,f26=f26,TACS=iTAC[,FcY,c("A","B"),,,iTer],
-                                        mpPoints=mpPoints,jac=NULL,lower=rep(0,2),upper=rep(1e5,2))$par
+                                        mpPoints=mpPoints,jac=NULL,lower=rep(1e-8,2),upper=rep(1e5,2),control=nls.lm.control(maxiter=1000))$par
     }
   }
   #- HCR B
   if(managementRule$HCR == "B"){
     for(iTer in 1:dims(stf)$iter){
       res[,iTer]              <- nls.lm(par=rep(1,2),find.FAB_HCRB,stk=stf[,FcY,c("A","B"),,,iTer],f01=f01,f26=f26,TACS=iTAC[,FcY,c("A","B"),,,iTer],
-                                        mpPoints=mpPoints,jac=NULL,lower=rep(0,2),upper=rep(1e5,2))$par
+                                        mpPoints=mpPoints,jac=NULL,lower=rep(1e-8,2),upper=rep(1e5,2),control=nls.lm.control(maxiter=1000))$par
     }
   }
 
