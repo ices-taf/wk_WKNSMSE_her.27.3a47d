@@ -60,10 +60,11 @@ source(file.path(path,"forecastFunctions.r"))
 #     - F sel: FAsel, FCsel, FBDsel
 #-------------------------------------------------------------------------------
 
-nits                <- 50
+nits                <- 200
 # load object
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessment.ctrl <- NSH.ctrl
+load(file.path(outPath,"stkAssessment2018.init.RData"))
 fishery@landings.sel[,projPeriod] <- sweep(fishery@landings.sel[,projPeriod],c(2:6),quantMeans(fishery@landings.sel[,projPeriod]),"/")
 
 # load MSE parameters
@@ -219,7 +220,7 @@ for (iYr in an(projPeriod)){
 
   #- Update fishery to year iYr-1
   landings.n(fishery)[,ac(iYr-1)]     <- sweep(sweep(landings.sel(fishery)[,ac(iYr-1),,,,],c(1:4,6),z,"/"),c(1:4,6),stock.n(biol)[,ac(iYr-1)]*(1-exp(-z)),"*")
-
+  catch.n(biol)[,ac(iYr-1)]           <- areaSums(landings.n(fishery[,ac(iYr-1)]))
   print(computeLandings(fishery[,ac(iYr-1)])/TAC[,ac(iYr-1)])
 
   #-------------------------------------------------------------------------------
@@ -257,18 +258,11 @@ for (iYr in an(projPeriod)){
   stkAssessment.ctrl@residuals      <- F
 
   # Run stock assessment
-  if(TaY <= projPeriod[1]){
-    ret <- MSE_assessment(  stkAssessment,
-                            stkAssessment.tun,
-                            stkAssessment.ctrl,
-                            escapeRuns)
-  } else {
-    ret <- MSE_assessment(  stkAssessment,
-                            stkAssessment.tun,
-                            stkAssessment.ctrl,
-                            escapeRuns,
-                            stkAssessment.init)
-  }
+  ret <- MSE_assessment(  stkAssessment,
+                          stkAssessment.tun,
+                          stkAssessment.ctrl,
+                          escapeRuns,
+                          stkAssessment.init)
   stkAssessment.init      <- ret$resInit
   escapeRuns              <- ret$escapeRuns
   stkAssessment           <- ret$stk
@@ -303,7 +297,16 @@ for (iYr in an(projPeriod)){
   for(idxIter in 1:nits)
     multso[idxIter,] <- nls.lm(par=runif(4),fn=TAC2sel,iYr=ImY,iBiol=biol[,ImY],iFishery=fishery[,ImY],iTAC=TAC[,ImY],catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,control=nls.lm.control(maxiter=1000),lower=rep(1e-8,4))$par
 
-  fishery@landings.sel[,ac(ImY)] <- sweep(landings.sel(fishery[,ac(ImY)]),3:6,t(multso),"*")
+  #Check for very high F
+  idx <- which(quantMeans(sweep(landings.sel(fishery[,ac(ImY)]),3:6,t(multso),"*")[ac(2:6),,,,"A"]) > 5)
+  if(length(idx)>0){
+    print(idx)
+    fishery@landings.sel[,ac(ImY),,,,-idx] <- sweep(landings.sel(fishery[,ac(ImY),,,,-idx]),3:6,t(multso)[,-idx],"*")
+    fishery@landings.sel[,ac(ImY),,,,idx]  <- landings.sel(fishery[,ac(an(ImY)-1),,,,idx])
+  } else {
+    #When setting a very high F this indicates that the optimiser doesn't work well, so replace with last year F
+    fishery@landings.sel[,ac(ImY)] <- sweep(landings.sel(fishery[,ac(ImY)]),3:6,t(multso),"*")
+  }
 
   cat("\n Finished effort calc \n")
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))

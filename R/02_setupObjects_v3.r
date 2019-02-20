@@ -564,10 +564,10 @@ dmns$iter   <- 1:nits
 
 # loop through the fleets to compute selectivity in futyre years for each fleet
 for(idxFleet in 1:length(fleets)){
-  
+
   currentHarvest <- NSH3f.sam@harvest[,ac((max(yearCurrent)-10):max(yearCurrent)),,,fleets[idxFleet]] # get F for the current fleet
   #currentHarvest <- NSH@harvest[,ac((max(yearCurrent)-10):max(yearCurrent))] # get F for the current fleet
-  
+
   #- Create random walk over Fs (as multiplier from last years selection pattern)
   # covariance in F (log) over 10 years for age 0 to 2
   covmat1                   <- cov(apply(log(drop(currentHarvest)), # covariance for the last 10 years
@@ -584,7 +584,7 @@ for(idxFleet in 1:length(fleets)){
   covmat2[ac(0:2),ac(0:2)]  <- 0;
   covmatMix                 <- covmat1 + covmat2 # mix of year period for different ages
   covmatMix[is.na(covmatMix)] <- 0
-  
+
   # create random samples using a multivariate normal distribution for the log covariance between ages for the future years for each iteration.
   # using 10 year period for the log covariance for age 0 to 2 and 20 year period for ages 3+
   wF                                                            <- FLQuant(array(t(mvrnorm(nits*nFutureyrs,
@@ -592,7 +592,7 @@ for(idxFleet in 1:length(fleets)){
                                                                                            covmatMix)), # covariance matrix using 10 years for age 0 to 2 and 20 years for ages 3+
                                                                                  dim=c(length(ages),nFutureyrs,1,1,1,nits)),
                                                                            dimnames=dmns)
-  
+
   # handle outliers for the random log covariances samples
   qtil                                                          <- quantile(c(wF),probs=c(0.05,0.95)) # 5/95 percentiles for all ages.
   qtilold                                                       <- quantile(c(wF[ac(4:8),]),probs=c(0.25,0.75)) # 25/75 percentiles for ages 4 to 8
@@ -600,13 +600,13 @@ for(idxFleet in 1:length(fleets)){
   wF@.Data[which(wF<qtil[1] | wF>qtil[2])][]                    <- 0
   # set outliers to 0 based on 5/95 percentiles across all ages
   wF[ac(4:8),]@.Data[which(wF[ac(4:8),]<qtilold[1] | wF[ac(4:8),]>qtilold[2])][] <- 0
-  
+
   # mimicing random walk through cumsum of the variances (i.e. F residuals) through the year for each age
   Ftemp <- apply(log(drop(currentHarvest)),1,mean) # mean of F at age over the selected number of years selPeriod
   rwF   <- wF
   for(idxIter in 1:nits){
     print(paste('init step 9 sel pattern - iter=',idxIter,' - fleet=', fleets[idxFleet]))
-    
+
     for(idxAge in 1:length(ages)){
       # compute F at age with residuals estimated through a random walk (cumsum across the years)
       rwF[idxAge,,,,,idxIter] <-  Ftemp[idxAge] + cumsum(drop(wF[idxAge,,,,,idxIter]))
@@ -664,7 +664,13 @@ rec.res <- residuals(biol.sr)[,ac(an(recPeriod)[2]:(max(an(recPeriod)))-1)]
 set.seed(108)
 
 # a list with one model per iteration
-arima.fit.lst <- lapply(as.list(1:dims(biol)$iter) ,  function(its) {arima(an(iter(rec.res,its)), order = c(1, 0, 0))})
+
+arima.fit.lst <- list()
+for(its in 1:dims(biol)$iter)
+  arima.fit.lst[[its]] <- try(arima(an(iter(rec.res,its)),order=c(1,0,0)))
+idx <- which(unlist(lapply(arima.fit.lst,function(x){class(x)=="try-error"}))==T)
+for(its in idx)
+  arima.fit.lst[[its]] <- try(arima(an(iter(rec.res,its))))
 
 #ny <- 20        # number of years to project - Usually 20
 #dy <- range(stkMC)["maxyear"]       # data year
