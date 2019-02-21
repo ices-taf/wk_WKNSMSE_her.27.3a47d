@@ -145,7 +145,9 @@ uptakeFleets              <- read.table(file.path(dataPath,'over_underfishing201
 Ctransfer                 <- matrix(runif((length(projPeriod)+3)*nits,min=0.4, max=0.5),nrow=nits,ncol=length(projPeriod)+3)    # Transfer of TAC from IIIa to IVa for C fleet in assessment year. Set between 0.4 and 0.5
 # update for the D fleets
 Duptake                   <- matrix(1,nrow=nits,ncol=length(projPeriod)+3)    # assume full uptake for the D fleet
-Dsplit                    <- matrix(rnorm((length(projPeriod)+3)*nits,mean=0.6,sd=0.1),nrow=nits,ncol=length(projPeriod)+3)
+#Dsplit                    <- matrix(rnorm((length(projPeriod)+3)*nits,mean=0.6,sd=0.1),nrow=nits,ncol=length(projPeriod)+3)
+DsplitHist                <- read.table(file.path(dataPath,'D_split.csv'),sep = ",")
+Dsplit                    <- matrix(rnorm((length(projPeriod)+3)*nits,mean=mean(DsplitHist),sd=sd(DsplitHist)),nrow=nits,ncol=length(projPeriod)+3)
 # update for the B fleet
 Buptake                   <- matrix(rnorm ((length(projPeriod)+3)*nits,
                                     mean(an(as.vector(uptakeFleets[2:16,3])),na.rm=TRUE), # mean over available historical values
