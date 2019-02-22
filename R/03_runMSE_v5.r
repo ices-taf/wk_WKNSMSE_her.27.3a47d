@@ -74,10 +74,10 @@ nits                <- 200
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessment.ctrl <- NSH.ctrl
 load(file.path(outPath,"stkAssessment2018.init.RData"))
-fishery@landings.sel[,projPeriod] <- sweep(fishery@landings.sel[,projPeriod],c(2:6),quantMeans(fishery@landings.sel[,projPeriod]),"/")
 
 # load MSE parameters
 load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_',ac(nits),'.RData')))
+fishery@landings.sel[,projPeriod] <- sweep(fishery@landings.sel[,projPeriod],c(2:6),quantMeans(fishery@landings.sel[,projPeriod]),"/")
 
 strFleet    <- c('A','B','C','D')
 nFleets     <- length(strFleet)
