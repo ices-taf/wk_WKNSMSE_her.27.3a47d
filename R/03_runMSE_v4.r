@@ -94,8 +94,8 @@ referencePoints <- list(Fmsy = 0.26,
                         F01 = 0.05,
                         Btrigger = 1400000)
 
-managementRule  <- list(HCR = "A",
-                        TACIAV="A", #"A","A+B","NULL"
+managementRule  <- list(HCR = "B",
+                        TACIAV=NULL, #"A","A+B","NULL"
                         BB = NULL)
                         
 runName         <- paste0("NSAS_Ftar_",referencePoints$Ftarget,
@@ -161,6 +161,7 @@ TAC_var[,,'Duptake']      <- t(Duptake)
 TAC_var[,,'Dsplit']       <- t(Dsplit)
 TAC_var[,,'Buptake']      <- t(Buptake)
 
+CATCH                     <- TAC
 
 #------------------------------------------------------------------------------#
 # 2) Start running the MSE
@@ -292,10 +293,12 @@ for (iYr in an(projPeriod)){
   #mults <- matrix(NA,nrow=nits,ncol=4)
   #for(idxIter in 1:nits)
   #  mults[idxIter,] <- optim(par=runif(4),fn=TAC2sel_V2,iYr=ImY,iBiol=biol[,ImY],iFishery=fishery[,ImY],iTAC=TAC[,ImY],catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,control=list(maxit=1000),lower=rep(1e-8,4),method="L-BFGS-B")$par
+  CATCH[,ImY,,,"A"]        <- TAC[,ImY,,,"A"] + TAC_var[ImY,,'Ctransfer'] * TAC[,ImY,,,"C"]
+  CATCH[,ImY,,,"B"]        <- TAC[,ImY,,,"B",drop=T] * TAC_var[ImY,,'Buptake',drop=T]
 
   multso <- matrix(NA,nrow=nits,ncol=4)
   for(idxIter in 1:nits)
-    multso[idxIter,] <- nls.lm(par=runif(4),fn=TAC2sel,iYr=ImY,iBiol=biol[,ImY],iFishery=fishery[,ImY],iTAC=TAC[,ImY],catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,control=nls.lm.control(maxiter=1000),lower=rep(1e-8,4))$par
+    multso[idxIter,] <- nls.lm(par=runif(4),fn=TAC2sel,iYr=ImY,iBiol=biol[,ImY],iFishery=fishery[,ImY],iTAC=CATCH[,ImY],catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,control=nls.lm.control(maxiter=1000),lower=rep(1e-8,4))$par
 
   #Check for very high F
   idx <- which(quantMeans(sweep(landings.sel(fishery[,ac(ImY)]),3:6,t(multso),"*")[ac(2:6),,,,"A"]) > 5)
