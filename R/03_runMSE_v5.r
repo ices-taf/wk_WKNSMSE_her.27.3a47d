@@ -27,6 +27,7 @@ HCR     <- substr(args[[1]][3],5,nchar(args[[1]][3]))
 IAV     <- substr(args[[1]][4],5,nchar(args[[1]][4]))
 BB      <- substr(args[[1]][5],4,nchar(args[[1]][5]))
 
+cat(ftarget,"\t",btrigger,"\t",HCR,"\t",IAV,"\t",BB,"\n")
 
 
 library(FLSAM)
