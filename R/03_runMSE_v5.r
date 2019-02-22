@@ -18,7 +18,20 @@
 #    load functions
 #-------------------------------------------------------------------------------
 
-rm(list=ls())
+#rm(list=ls())
+args=(commandArgs(TRUE))
+args    <- strsplit(args,"_")
+ftarget <- as.numeric(substr(args[[1]][1],6,9))
+btrigger<- as.numeric(substr(args[[1]][2],7,11))
+HCR     <- ifelse(as.numeric(substr(args[[1]][3],5,nchar(args[[1]][3])))==1,"A","B")
+IAV     <- ifelse(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4])))==1,0,
+                  ifelse(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4])))==2,"A",c("A","B")))
+BB      <- ifelse(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5])))==1,0,
+                  ifelse(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5])))==2,"A",c("A","B")))
+if(IAV == 0) IAV <- NULL
+if(BB == 0)  BB  <- NULL
+cat(ftarget,"\t",btrigger,"\t",HCR,"\t",IAV,"\t",BB,"\n")
+
 
 library(FLSAM)
 library(FLEDA)
@@ -65,10 +78,10 @@ nits                <- 200
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessment.ctrl <- NSH.ctrl
 load(file.path(outPath,"stkAssessment2018.init.RData"))
-fishery@landings.sel[,projPeriod] <- sweep(fishery@landings.sel[,projPeriod],c(2:6),quantMeans(fishery@landings.sel[,projPeriod]),"/")
 
 # load MSE parameters
 load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_',ac(nits),'.RData')))
+fishery@landings.sel[,projPeriod] <- sweep(fishery@landings.sel[,projPeriod],c(2:6),quantMeans(fishery@landings.sel[,projPeriod]),"/")
 
 strFleet    <- c('A','B','C','D')
 nFleets     <- length(strFleet)
@@ -90,13 +103,13 @@ referencePoints <- list(Fmsy = 0.26,
                         Blim = 800000,
                         Bpa  = 900000,
                         MSYBtrigger = 1400000,
-                        Ftarget = 0.26,
+                        Ftarget = ftarget,
                         F01 = 0.05,
-                        Btrigger = 1400000)
+                        Btrigger = btrigger)
 
-managementRule  <- list(HCR = "B",
-                        TACIAV=NULL, #"A","A+B","NULL"
-                        BB = NULL)
+managementRule  <- list(HCR = HCR,
+                        TACIAV=IAV, #"A","A+B","NULL"
+                        BB = BB)
                         
 runName         <- paste0("NSAS_Ftar_",referencePoints$Ftarget,
                               "_Btrig_",referencePoints$Btrigger,
