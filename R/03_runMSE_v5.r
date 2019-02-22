@@ -19,19 +19,51 @@
 #-------------------------------------------------------------------------------
 
 #rm(list=ls())
+
+
 args=(commandArgs(TRUE))
+args <- 'ftar=0.26_btrig=1.4e6_HCR=2_IAV=1_BB=1'
 args    <- strsplit(args,"_")
 ftarget <- as.numeric(substr(args[[1]][1],6,9))
 btrigger<- as.numeric(substr(args[[1]][2],7,11))
+
+# HCR
 HCR     <- ifelse(as.numeric(substr(args[[1]][3],5,nchar(args[[1]][3])))==1,"A","B")
-IAV     <- ifelse(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4])))==1,0,
-                  ifelse(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4])))==2,"A","B"))
-BB      <- ifelse(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5])))==1,0,
-                  ifelse(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5])))==2,"A","B"))
-if(IAV == 0)    IAV <- NULL
-if(BB == 0)     BB  <- NULL
-if(IAV == "B")  IAV <- c("A","B")
-if(BB == "B")   BB  <- c("A","B")
+
+# IAV
+if(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4]))) == 0){
+  IAV <- 0
+}
+if(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4]))) == 1){
+  IAV <- 'A'
+}
+if(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4]))) == 2){
+  IAV <- 'B'
+}
+
+# BB
+if(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][4]))) == 0){
+  BB <- 0
+}
+if(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5]))) == 1){
+  BB <- 'A'
+}
+if(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5]))) == 2){
+  BB <- 'B'
+}
+
+if(IAV == 0){
+  IAV <- NULL
+}else if(IAV == "B"){
+  IAV <- c("A","B")
+}
+
+if(BB == 0){
+  BB  <- NULL
+}else if(BB == "B"){
+  BB  <- c("A","B")
+}
+
 cat(ftarget,"\t",btrigger,"\t",HCR,"\t",IAV,"\t",BB,"\n")
 
 
