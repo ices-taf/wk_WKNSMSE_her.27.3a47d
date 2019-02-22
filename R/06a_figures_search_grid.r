@@ -44,8 +44,8 @@ functionPath  <- file.path(".","functions/")
 # 2) plotting grid search for HCR A+C
 #-------------------------------------------------------------------------------
 
-#HCR <- 'A_IAV_A'
-HCR <- 'B'
+HCR <- 'A_IAV_A'
+#HCR <- 'B'
 
 fileList <- list.files(file.path(outPath,paste0('grid_HCR_',HCR)))
 
