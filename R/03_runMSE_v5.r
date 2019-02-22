@@ -25,11 +25,13 @@ ftarget <- as.numeric(substr(args[[1]][1],6,9))
 btrigger<- as.numeric(substr(args[[1]][2],7,11))
 HCR     <- ifelse(as.numeric(substr(args[[1]][3],5,nchar(args[[1]][3])))==1,"A","B")
 IAV     <- ifelse(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4])))==1,0,
-                  ifelse(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4])))==2,"A",c("A","B")))
+                  ifelse(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4])))==2,"A","B"))
 BB      <- ifelse(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5])))==1,0,
-                  ifelse(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5])))==2,"A",c("A","B")))
-if(IAV == 0) IAV <- NULL
-if(BB == 0)  BB  <- NULL
+                  ifelse(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5])))==2,"A","B"))
+if(IAV == 0)    IAV <- NULL
+if(BB == 0)     BB  <- NULL
+if(IAV == "B")  IAV <- c("A","B")
+if(BB == "B")   BB  <- c("A","B")
 cat(ftarget,"\t",btrigger,"\t",HCR,"\t",IAV,"\t",BB,"\n")
 
 
