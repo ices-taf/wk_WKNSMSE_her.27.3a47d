@@ -140,12 +140,13 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
   #- TAC IAV
   #-----------------------------------------------------------------------------
   if(is.null(managementRule$TACIAV) == F){
-    mrF                         <- managementRule$TACIAV
+    mrF                             <- managementRule$TACIAV
+    idx                             <- which(SSBHCR > mpPoints$Blim)
     for(imrF in mrF){
-      bidx                      <- which(iTAC[,FcY,,,imrF] > (1.25 * iTAC[,ImY,,,imrF]))
-      iTAC[,FcY,,,imrF,bidx]    <- 1.25 * iTAC[,ImY,,,imrF,bidx]
-      sidx                      <- which(iTAC[,FcY,,,imrF] < (0.8 * iTAC[,ImY,,,imrF]))
-      iTAC[,FcY,,,imrF,sidx]    <- 0.8 * iTAC[,ImY,,,imrF,sidx]
+      bidx                          <- which(iTAC[,FcY,,,imrF,idx] > (1.25 * iTAC[,ImY,,,imrF,idx]))
+      iTAC[,FcY,,,imrF,idx[bidx]]   <- 1.25 * iTAC[,ImY,,,imrF,idx[bidx]]
+      sidx                          <- which(iTAC[,FcY,,,imrF,idx] < (0.8 * iTAC[,ImY,,,imrF,idx]))
+      iTAC[,FcY,,,imrF,idx[sidx]]   <- 0.8 * iTAC[,ImY,,,imrF,idx[sidx]]
     }
   }
 
