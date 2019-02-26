@@ -141,7 +141,7 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
   #-----------------------------------------------------------------------------
   if(is.null(managementRule$TACIAV) == F){
     mrF                             <- managementRule$TACIAV
-    idx                             <- which(SSBHCR > mpPoints$Blim)
+    idx                             <- which(SSBHCR > mpPoints$Btrigger)
     for(imrF in mrF){
       bidx                          <- which(iTAC[,FcY,,,imrF,idx] > (1.25 * iTAC[,ImY,,,imrF,idx]))
       iTAC[,FcY,,,imrF,idx[bidx]]   <- 1.25 * iTAC[,ImY,,,imrF,idx[bidx]]
@@ -154,7 +154,7 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
   #- Scenario bank and borrow: 1st year, bank, other years repay + borrow
   #-----------------------------------------------------------------------------
   if(is.null(managementRule$BB) == F){
-    bidx                        <- which(SSBHCR > mpPoints$Blim)
+    bidx                        <- which(SSBHCR > mpPoints$Btrigger)
     mrF                         <- managementRule$BB
     for(imrF in mrF){
       if(iYr == "2018"){             #Bank
