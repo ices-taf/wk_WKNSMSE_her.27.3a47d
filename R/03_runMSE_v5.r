@@ -111,7 +111,7 @@ nits                <- 1000
 # load object
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessment.ctrl <- NSH.ctrl
-load(file.path(outPath,"stkAssessment2018.init.RData"))
+load(file.path(outPath,"stkAssessment2018.init1000.RData"))
 
 # load MSE parameters
 load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_',ac(nits),'.RData')))
