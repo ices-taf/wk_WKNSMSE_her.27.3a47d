@@ -22,7 +22,7 @@
 
 
 args=(commandArgs(TRUE))
-args <- 'ftar=0.26_btrig=1.4e6_HCR=2_IAV=1_BB=1'
+#args <- 'ftar=0.26_btrig=1.4e6_HCR=2_IAV=1_BB=1'
 args    <- strsplit(args,"_")
 ftarget <- as.numeric(substr(args[[1]][1],6,9))
 btrigger<- as.numeric(substr(args[[1]][2],7,11))
@@ -107,7 +107,7 @@ source(file.path(path,"forecastFunctions.r"))
 #     - F sel: FAsel, FCsel, FBDsel
 #-------------------------------------------------------------------------------
 
-nits                <- 200
+nits                <- 1000
 # load object
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessment.ctrl <- NSH.ctrl
@@ -119,7 +119,7 @@ fishery@landings.sel[,projPeriod] <- sweep(fishery@landings.sel[,projPeriod],c(2
 
 strFleet    <- c('A','B','C','D')
 nFleets     <- length(strFleet)
-nAges       <- dim(biol)[1]
+nAges       <- dim(biol@stock.n)[1]
 surveyNames <- names(surveys)
 escapeRuns  <- numeric()
 
@@ -261,7 +261,7 @@ for (iYr in an(projPeriod)){
     if(idxIter %in% itersRI)
       recruitBio[idxIter] <- params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))) * exp(-params(iter(biol.sr,idxIter))["b"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))))
   }
-  recruitBio     <- recruitBio * exp(drop(sr.res[,ac(iYr)]))
+  recruitBio     <- recruitBio * exp(sr.res[,ac(iYr),drop=T])
   stock.n(biol)[1,ac(iYr)] <- recruitBio
 
   #- Plusgroup
