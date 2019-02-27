@@ -195,7 +195,7 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
     }
     if(managementRule$BB[1] == "E"){
       mrF                         <- c("A","B")
-      idx                         <- which(SSBHCR > mpPoints$Bpa & quantMeans(totF[ac(2:6),]) < mpPoints$Fpa)
+      idx                         <- which(SSBHCR > mpPoints$Bpa | quantMeans(totF[ac(2:6),]) < mpPoints$Fpa)
       bidx                        <- idx[which(SSBHCR[,,,,,idx] > mpPoints$Bpa & ssb.CtY[,,,,,idx] > mpPoints$Bpa)]
       if(length(bidx)>0){
         for(imrF in mrF){
