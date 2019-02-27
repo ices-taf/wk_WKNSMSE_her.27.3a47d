@@ -151,11 +151,13 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
     mrF                             <- managementRule$TACIAV
     if(managementRule$TACIAV[1] == "A"){
       idx                             <- which(SSBHCR > mpPoints$Btrigger)
-      for(imrF in mrF){
-        bidx                          <- which(iTAC[,FcY,,,imrF,idx] > (1.25 * iTAC[,ImY,,,imrF,idx]))
-        iTAC[,FcY,,,imrF,idx[bidx]]   <- 1.25 * iTAC[,ImY,,,imrF,idx[bidx]]
-        sidx                          <- which(iTAC[,FcY,,,imrF,idx] < (0.8 * iTAC[,ImY,,,imrF,idx]))
-        iTAC[,FcY,,,imrF,idx[sidx]]   <- 0.8 * iTAC[,ImY,,,imrF,idx[sidx]]
+      if(length(idx)>0){
+        for(imrF in mrF){
+          bidx                          <- which(iTAC[,FcY,,,imrF,idx] > (1.25 * iTAC[,ImY,,,imrF,idx]))
+          iTAC[,FcY,,,imrF,idx[bidx]]   <- 1.25 * iTAC[,ImY,,,imrF,idx[bidx]]
+          sidx                          <- which(iTAC[,FcY,,,imrF,idx] < (0.8 * iTAC[,ImY,,,imrF,idx]))
+          iTAC[,FcY,,,imrF,idx[sidx]]   <- 0.8 * iTAC[,ImY,,,imrF,idx[sidx]]
+        }
       }
     }
     if(managementRule$TACIAV[1] == "E"){
@@ -177,15 +179,17 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
     if(managementRule$BB[1] == "A"){
       bidx                        <- which(SSBHCR > mpPoints$Btrigger)
       mrF                         <- managementRule$BB
-      for(imrF in mrF){
-        if(iYr == "2018"){             #Bank
-          iTAC[,FcY,,,imrF,bidx]  <- 0.9 * iTAC[,FcY,,,imrF,bidx]
-        }
-        if(iYr == "2019"){             #Repay banked part                               Borrow
-          iTAC[,FcY,,,imrF,bidx]  <- (iTAC[,ImY,,,imrF,bidx] / 0.9 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
-        }
-        if(an(iYr) > 2019){            #Repay borrowed part                             Borrow
-          iTAC[,FcY,,,imrF,bidx]  <- (iTAC[,ImY,,,imrF,bidx] / 1.1 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
+      if(length(bidx)>0){
+        for(imrF in mrF){
+          if(iYr == "2018"){             #Bank
+            iTAC[,FcY,,,imrF,bidx]  <- 0.9 * iTAC[,FcY,,,imrF,bidx]
+          }
+          if(iYr == "2019"){             #Repay banked part                               Borrow
+            iTAC[,FcY,,,imrF,bidx]  <- (iTAC[,ImY,,,imrF,bidx] / 0.9 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
+          }
+          if(an(iYr) > 2019){            #Repay borrowed part                             Borrow
+            iTAC[,FcY,,,imrF,bidx]  <- (iTAC[,ImY,,,imrF,bidx] / 1.1 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
+          }
         }
       }
     }
@@ -193,18 +197,19 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
       mrF                         <- c("A","B")
       idx                         <- which(SSBHCR > mpPoints$Bpa & quantMeans(totF[ac(2:6),]) < mpPoints$Fpa)
       bidx                        <- idx[which(SSBHCR[,,,,,idx] > mpPoints$Bpa & ssb.CtY[,,,,,idx] > mpPoints$Bpa)]
-      for(imrF in mrF){
-        if(iYr == "2018"){             #Bank
-          iTAC[,FcY,,,imrF,bidx]  <- 0.9 * iTAC[,FcY,,,imrF,bidx]
-        }
-        if(iYr == "2019"){             #Repay banked part                               Borrow
-          iTAC[,FcY,,,imrF,bidx]  <- (iTAC[,ImY,,,imrF,bidx] / 0.9 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
-        }
-        if(an(iYr) > 2019){            #Repay borrowed part                             Borrow
-          iTAC[,FcY,,,imrF,bidx]  <- (iTAC[,ImY,,,imrF,bidx] / 1.1 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
+      if(length(bidx)>0){
+        for(imrF in mrF){
+          if(iYr == "2018"){             #Bank
+            iTAC[,FcY,,,imrF,bidx]  <- 0.9 * iTAC[,FcY,,,imrF,bidx]
+          }
+          if(iYr == "2019"){             #Repay banked part                               Borrow
+            iTAC[,FcY,,,imrF,bidx]  <- (iTAC[,ImY,,,imrF,bidx] / 0.9 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
+          }
+          if(an(iYr) > 2019){            #Repay borrowed part                             Borrow
+            iTAC[,FcY,,,imrF,bidx]  <- (iTAC[,ImY,,,imrF,bidx] / 1.1 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
+          }
         }
       }
-
   }
   
 
