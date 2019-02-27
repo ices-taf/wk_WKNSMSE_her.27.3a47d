@@ -193,18 +193,27 @@ if(newUptakes){
   #- Transfer from C fleet TAC to fleet A
   Ctransfer                 <- matrix(runif((length(projPeriod)+3)*nits,min=0.4, max=0.5),nrow=nits,ncol=length(projPeriod)+3)    # Transfer of TAC from IIIa to IVa for C fleet in assessment year. Set between 0.4 and 0.5
   # update for the D fleets
-  Duptake                   <- matrix(1,nrow=nits,ncol=length(projPeriod)+3)    # assume full uptake for the D fleet
+  Duptake                   <- matrix(rnorm((length(projPeriod)+3)*nits,
+                                      mean=0.488,sd=0.220658/2),
+                                      nrow=nits,ncol=length(projPeriod)+3)    # assume full uptake for the D fleet
+  Duptake[which(Duptake<0)] <- 0
+  Duptake[which(Duptake>1)] <- 1
   DSplitHist                <- read.table(file.path(dataPath,'D_split.csv'),sep = ",") # get mean and sd from historical data for NSAS/WBSS split for the D fleet
   Dsplit                    <- matrix(rnorm((length(projPeriod)+3)*nits,
                                       mean=mean(DSplitHist$V2),
                                       sd=sd(DSplitHist$V2)/2),
                                       nrow=nits,ncol=length(projPeriod)+3)
+  Dsplit[which(Dsplit<0)]    <- 0
+  Dsplit[which(Dsplit>1)]    <- 1
   #Dsplit                    <- matrix(rnorm((length(projPeriod)+3)*nits,mean=0.6,sd=0.1),nrow=nits,ncol=length(projPeriod)+3)
   # update for the B fleet
   Buptake                   <- matrix(rnorm ((length(projPeriod)+3)*nits,
                                       mean(an(as.vector(uptakeFleets[2:16,3])),na.rm=TRUE), # mean over available historical values
                                       sd(an(as.vector(uptakeFleets[2:16,3])),na.rm=TRUE)/2),   # sd over available historical values
                                       nrow=nits,ncol=length(projPeriod)+3)
+  Buptake[which(Buptake<0)] <- 0
+  Buptake[which(Buptake>1)] <- 1
+
   TAC_var                   <- array(NA,
                                      dim=c(length(projPeriod)+3,nits,4),
                                      dimnames=list('years' = ac(an(projPeriod)[1]:(an(projPeriod)[length(projPeriod)]+3)),
@@ -215,9 +224,9 @@ if(newUptakes){
   TAC_var[,,'Dsplit']       <- t(Dsplit)
   TAC_var[,,'Buptake']      <- t(Buptake)
 
-  save(Ctransfer,Duptake,DSplitHist,Dsplit,Buptake,TAC_var,file=file.path(outPath,paste0("SplitUptakes",nits,".RData")))
+  save(Ctransfer,Duptake,DSplitHist,Dsplit,Buptake,TAC_var,file=file.path(outPath,paste0("SplitUptakes_inclD",nits,".RData")))
 } else {
-  load(file.path(outPath,paste0("SplitUptakes",nits,".RData")))
+  load(file.path(outPath,paste0("SplitUptakes_inclD",nits,".RData")))
 }
 CATCH                     <- TAC
 
