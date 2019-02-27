@@ -131,14 +131,6 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
   totF                      <- unitSums(stf@harvest[,FcY,c("A","B")])
   SSBHCR                    <- quantSums(stf@stock.n[,FcY,1] * stf@stock.wt[,FcY,1] * exp(-totF*stf@harvest.spwn[,FcY,1] - stf@m[,FcY,1]) * stf@mat[,FcY,1])
 
-  #Update to continuation year
-  stf@harvest[,CtY,c("A","B")]                                <- fleet.harvestFF(stk=stf[,,c("A","B")],iYr=CtY,TACS=iTAC[,FcY,,,c("A","B")])
-  for(i in dms$unit) stf@stock.n[1,CtY,i]                     <- RECS$CtY
-  for(i in dms$unit) stf@stock.n[2:(dims(stf)$age-1),CtY,i]   <- (stf@stock.n[,FcY,1]*exp(-unitSums(stf@harvest[,FcY,c("A","B")])-stf@m[,FcY,1]))[ac(range(stf)["min"]:(range(stf)["max"]-2)),]
-  for(i in dms$unit) stf@stock.n[dims(stf)$age,CtY,i]         <- apply((stf@stock.n[,FcY,1]*exp(-unitSums(stf@harvest[,FcY,c("A","B")])-stf@m[,FcY,1]))[ac((range(stf)["max"]-1):range(stf)["max"]),],2:6,sum,na.rm=T)
-  ssb.CtY                                                     <- quantSums(stf@stock.n[,CtY,1] * stf@stock.wt[,CtY,1]*stf@mat[,CtY,1]*exp(-unitSums(stf@harvest[,FcY,c("A","B")])*stf@harvest.spwn[,CtY,1]-stf@m[,CtY,1]*stf@m.spwn[,CtY,1])) #assume same harvest as in FcY
-
-
   print(SSBHCR)
   print(iTAC[,FcY,,,c("A","B")])
   print(quantMeans(unitSums(stf@harvest[f26,FcY,c("A","B")])))
@@ -194,6 +186,14 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
       }
     }
     if(managementRule$BB[1] == "E"){
+    
+      #Update to continuation year
+      stf@harvest[,CtY,c("A","B")]                                <- fleet.harvestFF(stk=stf[,,c("A","B")],iYr=CtY,TACS=iTAC[,FcY,,,c("A","B")])
+      for(i in dms$unit) stf@stock.n[1,CtY,i]                     <- RECS$CtY
+      for(i in dms$unit) stf@stock.n[2:(dims(stf)$age-1),CtY,i]   <- (stf@stock.n[,FcY,1]*exp(-unitSums(stf@harvest[,FcY,c("A","B")])-stf@m[,FcY,1]))[ac(range(stf)["min"]:(range(stf)["max"]-2)),]
+      for(i in dms$unit) stf@stock.n[dims(stf)$age,CtY,i]         <- apply((stf@stock.n[,FcY,1]*exp(-unitSums(stf@harvest[,FcY,c("A","B")])-stf@m[,FcY,1]))[ac((range(stf)["max"]-1):range(stf)["max"]),],2:6,sum,na.rm=T)
+      ssb.CtY                                                     <- quantSums(stf@stock.n[,CtY,1] * stf@stock.wt[,CtY,1]*stf@mat[,CtY,1]*exp(-unitSums(stf@harvest[,FcY,c("A","B")])*stf@harvest.spwn[,CtY,1]-stf@m[,CtY,1]*stf@m.spwn[,CtY,1])) #assume same harvest as in FcY
+
       mrF                         <- c("A","B")
       idx                         <- which(SSBHCR > mpPoints$Bpa | quantMeans(totF[ac(2:6),]) < mpPoints$Fpa)
       bidx                        <- idx[which(SSBHCR[,,,,,idx] > mpPoints$Bpa & ssb.CtY[,,,,,idx] > mpPoints$Bpa)]
