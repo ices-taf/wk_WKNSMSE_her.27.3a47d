@@ -23,10 +23,11 @@ library(FLEDA)
 #library(R.utils)
 
 #path          <- "D:/Work/Herring MSE/NSAS/"
-path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
+#path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
+path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
 #path <- '/home/berge057/ICES/wk_WKNSMSE_her.27.3a47d/R/'
-path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
+#path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
 assessment_name_noLAI   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -65,7 +66,7 @@ save(NSHnoLAI,
      NSHnoLAI.ctrl,
      NSHnoLAI.sam,
      NSHnoLAI.retro,
-     file=file.path(outPath,paste0(assessment_name_noLAI,'_sf_retro.Rdata')))
+     file=file.path(outPath,paste0(assessment_name_noLAI,'_sf_noLAI_retro.Rdata')))
 
 # modify object names so it fits those in the other scripts
 NSH       <- NSHnoLAI
@@ -81,6 +82,17 @@ save(NSH,
 #-------------------------------------------------------------------
 # loading assessments with and without LAI index
 #-------------------------------------------------------------------
+
+outputName <- 'LAI_comparison'
+
+PDF <- FALSE
+PNG <- ifelse(PDF,F,T)
+if(PDF) pdf(file.path(outPath,'plots',paste0(outputName,".pdf")))
+if(PNG) png(file.path(outPath,'plots',paste0(outputName,"_%02d.png")),
+            units = "px",
+            height=800,
+            width=672,
+            bg = "white")
 
 load(file.path(outPath,paste0('NSAS_WKNSMSE2018_sf_retro.Rdata')))
 
@@ -203,3 +215,7 @@ plot(yrs_retro,
 lines(yrs_retro,
       rec_mrNoLAI$rho,
       col=rgb(1,0,0,1),lwd=3)
+
+
+dev.off()
+
