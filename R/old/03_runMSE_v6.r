@@ -22,7 +22,7 @@
 
 
 args=(commandArgs(TRUE))
-#args <- 'ftar=0.24_btrig=1.4e6_HCR=1_IAV=0_BB=0'
+#args <- 'ftar=0.26_btrig=1.4e6_HCR=2_IAV=1_BB=1'
 args    <- strsplit(args,"_")
 ftarget <- as.numeric(substr(args[[1]][1],6,9))
 btrigger<- as.numeric(substr(args[[1]][2],7,11))
@@ -107,19 +107,15 @@ source(file.path(path,"forecastFunctions.r"))
 #     - F sel: FAsel, FCsel, FBDsel
 #-------------------------------------------------------------------------------
 
-nits                <- 200
+nits                <- 1000
 # load object
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessment.ctrl <- NSH.ctrl
-if(nits == 1000)
-  load(file.path(outPath,"stkAssessment2018.init1000.RData"))
-if(nits == 200)
-  load(file.path(outPath,"stkAssessment2018.init.RData"))
+load(file.path(outPath,"stkAssessment2018.init1000.RData"))
 
 # load MSE parameters
 load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_',ac(nits),'.RData')))
 fishery@landings.sel[,projPeriod] <- sweep(fishery@landings.sel[,projPeriod],c(2:6),quantMeans(fishery@landings.sel[,projPeriod]),"/")
-biol@harvest.spwn[] <- 0.67
 
 strFleet    <- c('A','B','C','D')
 nFleets     <- length(strFleet)
@@ -197,18 +193,27 @@ if(newUptakes){
   #- Transfer from C fleet TAC to fleet A
   Ctransfer                 <- matrix(runif((length(projPeriod)+3)*nits,min=0.4, max=0.5),nrow=nits,ncol=length(projPeriod)+3)    # Transfer of TAC from IIIa to IVa for C fleet in assessment year. Set between 0.4 and 0.5
   # update for the D fleets
-  Duptake                   <- matrix(1,nrow=nits,ncol=length(projPeriod)+3)    # assume full uptake for the D fleet
+  Duptake                   <- matrix(rnorm((length(projPeriod)+3)*nits,
+                                      mean=0.488,sd=0.220658/2),
+                                      nrow=nits,ncol=length(projPeriod)+3)    # assume full uptake for the D fleet
+  Duptake[which(Duptake<0)] <- 0
+  Duptake[which(Duptake>1)] <- 1
   DSplitHist                <- read.table(file.path(dataPath,'D_split.csv'),sep = ",") # get mean and sd from historical data for NSAS/WBSS split for the D fleet
   Dsplit                    <- matrix(rnorm((length(projPeriod)+3)*nits,
                                       mean=mean(DSplitHist$V2),
                                       sd=sd(DSplitHist$V2)/2),
                                       nrow=nits,ncol=length(projPeriod)+3)
+  Dsplit[which(Dsplit<0)]    <- 0
+  Dsplit[which(Dsplit>1)]    <- 1
   #Dsplit                    <- matrix(rnorm((length(projPeriod)+3)*nits,mean=0.6,sd=0.1),nrow=nits,ncol=length(projPeriod)+3)
   # update for the B fleet
   Buptake                   <- matrix(rnorm ((length(projPeriod)+3)*nits,
                                       mean(an(as.vector(uptakeFleets[2:16,3])),na.rm=TRUE), # mean over available historical values
                                       sd(an(as.vector(uptakeFleets[2:16,3])),na.rm=TRUE)/2),   # sd over available historical values
                                       nrow=nits,ncol=length(projPeriod)+3)
+  Buptake[which(Buptake<0)] <- 0
+  Buptake[which(Buptake>1)] <- 1
+
   TAC_var                   <- array(NA,
                                      dim=c(length(projPeriod)+3,nits,4),
                                      dimnames=list('years' = ac(an(projPeriod)[1]:(an(projPeriod)[length(projPeriod)]+3)),
@@ -219,9 +224,9 @@ if(newUptakes){
   TAC_var[,,'Dsplit']       <- t(Dsplit)
   TAC_var[,,'Buptake']      <- t(Buptake)
 
-  save(Ctransfer,Duptake,DSplitHist,Dsplit,Buptake,TAC_var,file=file.path(outPath,paste0("SplitUptakes",nits,".RData")))
+  save(Ctransfer,Duptake,DSplitHist,Dsplit,Buptake,TAC_var,file=file.path(outPath,paste0("SplitUptakes_inclD",nits,".RData")))
 } else {
-  load(file.path(outPath,paste0("SplitUptakes",nits,".RData")))
+  load(file.path(outPath,paste0("SplitUptakes_inclD",nits,".RData")))
 }
 CATCH                     <- TAC
 

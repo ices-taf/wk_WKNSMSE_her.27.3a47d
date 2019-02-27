@@ -7,7 +7,7 @@ randBlocks <- function(fecYears,projPeriod,nits){
   saveBlcks_rev        <- matrix(NA,nrow=nits,ncol=nyrs)
   
   for(idxIter in 1:nits){
-    saveBlcks_nYears[idxIter,] <- randNums(nyrs,1,length(fecYears)-3,nyrs)
+    saveBlcks_nYears[idxIter,] <- randNums(nyrs,1,length(fecYears)-1,nyrs)
   }
   
   # randomize the starting years
@@ -17,17 +17,21 @@ randBlocks <- function(fecYears,projPeriod,nits){
     # loop on non NaN values
     for(idxYear in 1:length(nYearsTemp)){
       
-      if(round(runif(1,0,1)) == 0){
-        saveBlcks_startYear[idxIter,idxYear] <- round(runif(n = 1, 
-                                                            min=min(an(fecYears)), 
-                                                            max=(max(an(fecYears))-nYearsTemp[idxYear]))) # random number for the starting year
-        saveBlcks_rev[idxIter,idxYear] <- 0
-      }else{
-        saveBlcks_startYear[idxIter,idxYear] <- round(runif(n = 1, 
-                                                            min=(min(an(fecYears))+nYearsTemp[idxYear]), 
-                                                            max=max(an(fecYears)))) # random number for the starting year
-        saveBlcks_rev[idxIter,idxYear] <- 1
-      }
+      saveBlcks_startYear[idxIter,idxYear] <- round(runif(n = 1, 
+                                                          min=min(an(fecYears)), 
+                                                          max=(max(an(fecYears))-nYearsTemp[idxYear]))) # random number for the starting year
+      
+      #if(round(runif(1,0,1)) == 0){
+      #  saveBlcks_startYear[idxIter,idxYear] <- round(runif(n = 1, 
+      #                                                      min=min(an(fecYears)), 
+      #                                                      max=(max(an(fecYears))-nYearsTemp[idxYear]))) # random number for the starting year
+      #  saveBlcks_rev[idxIter,idxYear] <- 0
+      #}else{
+      #  saveBlcks_startYear[idxIter,idxYear] <- round(runif(n = 1, 
+      #                                                      min=(min(an(fecYears))+nYearsTemp[idxYear]), 
+      #                                                      max=max(an(fecYears)))) # random number for the starting year
+      #  saveBlcks_rev[idxIter,idxYear] <- 1
+      #}
     }
   }
   
@@ -38,15 +42,19 @@ randBlocks <- function(fecYears,projPeriod,nits){
   for(idxIter in 1:nits){
     for(idxYear in 1:nyrs){
       if(!is.na(saveBlcks_startYear[idxIter,idxYear])){
-        if(saveBlcks_rev[idxIter,idxYear] == 1){ # reverse
-          tempVal <- c( saveBlcks_startYear[idxIter,idxYear],
-                        saveBlcks_startYear[idxIter,idxYear] - saveBlcks_nYears[idxIter,idxYear])
-          tempVal[2] <- tempVal[2]+1
-        }else{ # normal order
-          tempVal <- c(saveBlcks_startYear[idxIter,idxYear],
-                       saveBlcks_startYear[idxIter,idxYear] + saveBlcks_nYears[idxIter,idxYear])
-          tempVal[2] <- tempVal[2]-1
-        }
+        #if(saveBlcks_rev[idxIter,idxYear] == 1){ # reverse
+        #  tempVal <- c( saveBlcks_startYear[idxIter,idxYear],
+        #                saveBlcks_startYear[idxIter,idxYear] - saveBlcks_nYears[idxIter,idxYear])
+        #  tempVal[2] <- tempVal[2]+1
+        #}else{ # normal order
+        #  tempVal <- c(saveBlcks_startYear[idxIter,idxYear],
+        #               saveBlcks_startYear[idxIter,idxYear] + saveBlcks_nYears[idxIter,idxYear])
+        #  tempVal[2] <- tempVal[2]-1
+        #}
+        
+        tempVal <- c(saveBlcks_startYear[idxIter,idxYear],
+                     saveBlcks_startYear[idxIter,idxYear] + saveBlcks_nYears[idxIter,idxYear])
+        tempVal[2] <- tempVal[2]-1
         
         saveBlcksYrs[idxIter,idxYear,"start"] <- tempVal[1]
         saveBlcksYrs[idxIter,idxYear,"stop"]  <- tempVal[2]

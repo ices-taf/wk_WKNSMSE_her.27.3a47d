@@ -141,12 +141,26 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
   #-----------------------------------------------------------------------------
   if(is.null(managementRule$TACIAV) == F){
     mrF                             <- managementRule$TACIAV
-    idx                             <- which(SSBHCR > mpPoints$Blim)
-    for(imrF in mrF){
-      bidx                          <- which(iTAC[,FcY,,,imrF,idx] > (1.25 * iTAC[,ImY,,,imrF,idx]))
-      iTAC[,FcY,,,imrF,idx[bidx]]   <- 1.25 * iTAC[,ImY,,,imrF,idx[bidx]]
-      sidx                          <- which(iTAC[,FcY,,,imrF,idx] < (0.8 * iTAC[,ImY,,,imrF,idx]))
-      iTAC[,FcY,,,imrF,idx[sidx]]   <- 0.8 * iTAC[,ImY,,,imrF,idx[sidx]]
+    if(managementRule$TACIAV[1] == "A"){
+      idx                             <- which(SSBHCR > mpPoints$Btrigger)
+      if(length(idx)>0){
+        for(imrF in mrF){
+          bidx                          <- which(iTAC[,FcY,,,imrF,idx] > (1.25 * iTAC[,ImY,,,imrF,idx]))
+          iTAC[,FcY,,,imrF,idx[bidx]]   <- 1.25 * iTAC[,ImY,,,imrF,idx[bidx]]
+          sidx                          <- which(iTAC[,FcY,,,imrF,idx] < (0.8 * iTAC[,ImY,,,imrF,idx]))
+          iTAC[,FcY,,,imrF,idx[sidx]]   <- 0.8 * iTAC[,ImY,,,imrF,idx[sidx]]
+        }
+      }
+    }
+    if(managementRule$TACIAV[1] == "E"){
+      mrF                             <- c("A","B")
+      idx                             <- 1:dim(iTAC)[6]
+      for(imrF in mrF){
+        bidx                          <- which(iTAC[,FcY,,,imrF,idx] > (1.25 * iTAC[,ImY,,,imrF,idx]))
+        iTAC[,FcY,,,imrF,idx[bidx]]   <- 1.25 * iTAC[,ImY,,,imrF,idx[bidx]]
+        sidx                          <- which(iTAC[,FcY,,,imrF,idx] < (0.8 * iTAC[,ImY,,,imrF,idx]))
+        iTAC[,FcY,,,imrF,idx[sidx]]   <- 0.8 * iTAC[,ImY,,,imrF,idx[sidx]]
+      }
     }
   }
 
@@ -154,19 +168,49 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
   #- Scenario bank and borrow: 1st year, bank, other years repay + borrow
   #-----------------------------------------------------------------------------
   if(is.null(managementRule$BB) == F){
-    bidx                        <- which(SSBHCR > mpPoints$Blim)
-    mrF                         <- managementRule$BB
-    for(imrF in mrF){
-      if(iYr == "2018"){             #Bank
-        iTAC[,FcY,,,imrF,bidx]     <- 0.9 * iTAC[,FcY,,,imrF,bidx]
-      }
-      if(iYr == "2019"){             #Repay banked part                               Borrow
-        iTAC[,FcY,,,imrF,bidx]     <- (iTAC[,ImY,,,imrF,bidx] / 0.9 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
-      }
-      if(an(iYr) > 2019){            #Repay borrowed part                             Borrow
-        iTAC[,FcY,,,imrF,bidx]     <- (iTAC[,ImY,,,imrF,bidx] / 1.1 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
+    if(managementRule$BB[1] == "A"){
+      bidx                        <- which(SSBHCR > mpPoints$Btrigger)
+      mrF                         <- managementRule$BB
+      if(length(bidx)>0){
+        for(imrF in mrF){
+          if(iYr == "2018"){             #Bank
+            iTAC[,FcY,,,imrF,bidx]  <- 0.9 * iTAC[,FcY,,,imrF,bidx]
+          }
+          if(iYr == "2019"){             #Repay banked part                               Borrow
+            iTAC[,FcY,,,imrF,bidx]  <- (iTAC[,ImY,,,imrF,bidx] / 0.9 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
+          }
+          if(an(iYr) > 2019){            #Repay borrowed part                             Borrow
+            iTAC[,FcY,,,imrF,bidx]  <- (iTAC[,ImY,,,imrF,bidx] / 1.1 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
+          }
+        }
       }
     }
+    if(managementRule$BB[1] == "E"){
+    
+      #Update to continuation year
+      stf@harvest[,CtY,c("A","B")]                                <- fleet.harvestFF(stk=stf[,,c("A","B")],iYr=CtY,TACS=iTAC[,FcY,,,c("A","B")])
+      for(i in dms$unit) stf@stock.n[1,CtY,i]                     <- RECS$CtY
+      for(i in dms$unit) stf@stock.n[2:(dims(stf)$age-1),CtY,i]   <- (stf@stock.n[,FcY,1]*exp(-unitSums(stf@harvest[,FcY,c("A","B")])-stf@m[,FcY,1]))[ac(range(stf)["min"]:(range(stf)["max"]-2)),]
+      for(i in dms$unit) stf@stock.n[dims(stf)$age,CtY,i]         <- apply((stf@stock.n[,FcY,1]*exp(-unitSums(stf@harvest[,FcY,c("A","B")])-stf@m[,FcY,1]))[ac((range(stf)["max"]-1):range(stf)["max"]),],2:6,sum,na.rm=T)
+      ssb.CtY                                                     <- quantSums(stf@stock.n[,CtY,1] * stf@stock.wt[,CtY,1]*stf@mat[,CtY,1]*exp(-unitSums(stf@harvest[,FcY,c("A","B")])*stf@harvest.spwn[,CtY,1]-stf@m[,CtY,1]*stf@m.spwn[,CtY,1])) #assume same harvest as in FcY
+      totF                                                        <- unitSums(stf@harvest[,FcY,c("A","B")])
+
+      mrF                         <- c("A","B")
+      idx                         <- which(SSBHCR > mpPoints$Bpa | quantMeans(totF[ac(2:6),]) < mpPoints$Fpa)
+      bidx                        <- idx[which(SSBHCR[,,,,,idx] > mpPoints$Bpa & ssb.CtY[,,,,,idx] > mpPoints$Bpa)]
+      if(length(bidx)>0){
+        for(imrF in mrF){
+          if(iYr == "2018"){             #Bank
+            iTAC[,FcY,,,imrF,bidx]  <- 0.9 * iTAC[,FcY,,,imrF,bidx]
+          }
+          if(iYr == "2019"){             #Repay banked part                               Borrow
+            iTAC[,FcY,,,imrF,bidx]  <- (iTAC[,ImY,,,imrF,bidx] / 0.9 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
+          }
+          if(an(iYr) > 2019){            #Repay borrowed part                             Borrow
+            iTAC[,FcY,,,imrF,bidx]  <- (iTAC[,ImY,,,imrF,bidx] / 1.1 - iTAC[,ImY,,,imrF,bidx]) + (1.1 * iTAC[,FcY,,,imrF,bidx])
+          }
+        }
+      }
   }
   
 
