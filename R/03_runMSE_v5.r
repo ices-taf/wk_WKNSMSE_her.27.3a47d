@@ -22,7 +22,7 @@
 
 
 args=(commandArgs(TRUE))
-#args <- 'ftar=0.26_btrig=1.4e6_HCR=2_IAV=1_BB=1'
+#args <- 'ftar=0.24_btrig=1.4e6_HCR=1_IAV=0_BB=0'
 args    <- strsplit(args,"_")
 ftarget <- as.numeric(substr(args[[1]][1],6,9))
 btrigger<- as.numeric(substr(args[[1]][2],7,11))
@@ -107,15 +107,19 @@ source(file.path(path,"forecastFunctions.r"))
 #     - F sel: FAsel, FCsel, FBDsel
 #-------------------------------------------------------------------------------
 
-nits                <- 1000
+nits                <- 200
 # load object
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessment.ctrl <- NSH.ctrl
-load(file.path(outPath,"stkAssessment2018.init1000.RData"))
+if(nits == 1000)
+  load(file.path(outPath,"stkAssessment2018.init1000.RData"))
+if(nits == 200)
+  load(file.path(outPath,"stkAssessment2018.init.RData"))
 
 # load MSE parameters
 load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_',ac(nits),'.RData')))
 fishery@landings.sel[,projPeriod] <- sweep(fishery@landings.sel[,projPeriod],c(2:6),quantMeans(fishery@landings.sel[,projPeriod]),"/")
+biol@harvest.spwn[] <- 0.67
 
 strFleet    <- c('A','B','C','D')
 nFleets     <- length(strFleet)
