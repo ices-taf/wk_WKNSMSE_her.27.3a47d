@@ -215,7 +215,7 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
   }
   
 
-return(list(TAC=iTAC[,FcY]))}
+return(list(TAC=iTAC[,FcY],SSB=list("FcY"=SSBHCR,"CtY"=ssb.CtY),Fbar=totF))}
 
 
 
