@@ -22,7 +22,7 @@
 
 
 args=(commandArgs(TRUE))
-#args <- 'ftar=0.24_btrig=1.4e6_HCR=1_IAV=0_BB=0'
+#args <- 'ftar=0.24_btrig=1.8e6_HCR=1_IAV=0_BB=0'
 args    <- strsplit(args,"_")
 ftarget <- as.numeric(substr(args[[1]][1],6,9))
 btrigger<- as.numeric(substr(args[[1]][2],7,11))
@@ -224,6 +224,9 @@ if(newUptakes){
   load(file.path(outPath,paste0("SplitUptakes",nits,".RData")))
 }
 CATCH                     <- TAC
+FHCR                      <- FLQuant(NA, dimnames=c(age=0:8,year=projPeriod,unit="unique",season="all",area="unique",iter=1:nits))
+SSBHCR                    <- FLQuant(NA, dimnames=c(age="all",year=projPeriod,unit="unique",season=c("FcY","CtY"),area="unique",iter=1:nits))
+
 
 #------------------------------------------------------------------------------#
 # 2) Start running the MSE
@@ -342,6 +345,10 @@ for (iYr in an(projPeriod)){
   #(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementRule)
   projNSAS                  <- projectNSH(stkAssessment,fishery,iYr,TAC,histMaxYr,referencePoints,managementRule)
   TAC[,FcY,,,c("A","B")]    <- projNSAS$TAC[,,,,c("A","B")]
+  FHCR[,FcY]                <- projNSAS$Fbar
+  SSBHCR[,FcY,,"FcY"]       <- projNSAS$SSB$FcY #store HCR SSB in the forecast year
+  SSBHCR[,FcY,,"CtY"]       <- projNSAS$SSB$CtY #store HCR SSB in the continuation year
+
   cat("\n Finished forecast \n")
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
 
