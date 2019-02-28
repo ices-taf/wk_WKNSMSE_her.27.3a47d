@@ -671,6 +671,8 @@ for(its in 1:dims(biol)$iter)
 idx <- which(unlist(lapply(arima.fit.lst,function(x){class(x)=="try-error"}))==T)
 for(its in idx)
   arima.fit.lst[[its]] <- try(arima(an(iter(rec.res,its))))
+table(unlist(lapply(arima.fit.lst,class)))
+  
 
 #ny <- 20        # number of years to project - Usually 20
 #dy <- range(stkMC)["maxyear"]       # data year
