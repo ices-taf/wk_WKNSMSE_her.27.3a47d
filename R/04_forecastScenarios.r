@@ -130,7 +130,7 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
   #- Get SSB as a results from the TACS
   totF                      <- unitSums(stf@harvest[,FcY,c("A","B")])
   SSBHCR                    <- quantSums(stf@stock.n[,FcY,1] * stf@stock.wt[,FcY,1] * exp(-totF*stf@harvest.spwn[,FcY,1] - stf@m[,FcY,1]) * stf@mat[,FcY,1])
-
+  ssb.CtY                   <- NA
   print(SSBHCR)
   print(iTAC[,FcY,,,c("A","B")])
   print(quantMeans(unitSums(stf@harvest[f26,FcY,c("A","B")])))
