@@ -46,7 +46,7 @@ functionPath  <- file.path(".","functions/")
 
 outputName <- 'input_diagnostics'
 
-PDF <- FALSE
+PDF <- TRUE
 PNG <- ifelse(PDF,F,T)
 if(PDF) pdf(file.path(outPath,'plots',paste0(outputName,".pdf")))
 if(PNG) png(file.path(outPath,'plots',paste0(outputName,"_%02d.png")),
@@ -73,9 +73,21 @@ nAges       <- dim(biol)[1]
 surveyNames <- names(surveys)
 
 load(file.path(outPath,paste0(assessment_name,'_sf_noLAI.Rdata')))
+load(file.path(outPath,paste0(assessment_name,'_mf_noLAI.Rdata')))
 
 # 100 iteration object not here yet
 load(file.path(outPath,'SplitUptakes200.RData'))
+
+raw_M             <- read.csv(file.path(dataPath,"Raw_NotExtrapolated_NSAS_SMS2016.csv"),header=TRUE)
+colnames(raw_M)   <- sub("X","",colnames(raw_M))
+rownames(raw_M)   <- raw_M[,1]
+raw_M             <- raw_M[,-1]# Trim off first column as it contains 'ages'
+raw_M             <- cbind(replicate(as.numeric(colnames(raw_M)[1])-histMinYr,raw_M[,1]), raw_M)
+raw_M             <- cbind(raw_M,raw_M[,dim(raw_M)[2]])
+colnames(raw_M)   <- histMinYr:histMaxYr
+raw_M             <- raw_M[1:9,] + 0.11 # trim age 9 and add 0.11 (assessment profiling from WKPELA)
+
+biol@m[,histPeriod] <- as.matrix( raw_M)
 
 #-------------------------------------------------------------------------------
 # 2) Plotting
@@ -189,6 +201,33 @@ for(ageIdx in 1:dim(biol@catch.n)[1]){
   lines(years,a[ac(ageIdx-1),],type='l',ylab=c('age',ac(ageIdx)),lwd=3)
 }
 mtext(paste0('Random samples - catches'), line = -2, cex=1.5, font=2,outer = TRUE)
+
+################################################################################
+# random samples ssb
+################################################################################
+
+par(mfrow=c(2,1))
+a     <- drop(ssb(NSH))
+years <- histMinYr:histMaxYr # vector the years
+plot(years,a,type='l',ylab=c('SSB'))
+for(idxIter in 1:100){
+  b     <- iter(ssb(biol),idxIter)
+  b     <- b[,match(years,colnames(b))]
+  lines(years,b,col='green')
+}
+lines(years,a,type='l',lwd=3)
+
+a     <- drop(fbar(NSH))
+years <- histMinYr:histMaxYr # vector the years
+plot(years,a,type='l',ylab=c('SSB'))
+for(idxIter in 1:100){
+  b     <- iter(fbar(biol),idxIter)
+  b     <- b[,match(years,colnames(b))]
+  lines(years,b,col='green')
+}
+lines(years,a,type='l',lwd=3)
+
+mtext(paste0('Random samples - stock trajectory'), line = -2, cex=1.5, font=2,outer = TRUE)
 
 ################################################################################
 # Recruitment 
@@ -402,6 +441,15 @@ fishSel       <- as.data.frame(fishery@landings.sel[,projPeriod])
 fishSel$run   <- 'proj'
 fishSel$year  <- ac(fishSel$year)
 
+fishSelHist     <-as.data.frame(NSH3f.sam@harvest[,ac(2007:2017)])
+
+for(idxYear in histPeriod){
+  for(idxAge in 1:9){
+    fishSelHist
+  }
+}
+fishSelHist   <- biol@harvest[,histPeriod]
+
 fishSel <- rbind(fishSel,fishSelHist)
 
 fleetList <- c('A','B','C','D')
@@ -413,47 +461,47 @@ ageSel <- 0
 p1 <-  ggplot(fishSel[fishSel$area == mFleet & fishSel$age == ageSel,],aes(x=year, y=data)) + 
               geom_boxplot(outlier.alpha = 0.1) + ylab(paste0('F',' - age ',ageSel)) + 
               ggtitle(paste0('F ',mFleet,' fleet')) + 
-              theme(plot.title = element_text(size = 15, face = "bold"))
+              theme(plot.title = element_text(size = 15, face = "bold"),axis.text.x = element_text(angle = 90, hjust = 1))
 
 ageSel <- 1
 p2 <-  ggplot(fishSel[fishSel$area == mFleet & fishSel$age == ageSel,],aes(x=year, y=data)) + 
   geom_boxplot(outlier.alpha = 0.1) + ylab(paste0('F',' - age ',ageSel)) + 
-  theme(plot.title = element_text(size = 15, face = "bold"))
+  theme(plot.title = element_text(size = 15, face = "bold"),axis.text.x = element_text(angle = 90, hjust = 1))
 
 ageSel <- 2
 p3 <-  ggplot(fishSel[fishSel$area == mFleet & fishSel$age == ageSel,],aes(x=year, y=data)) + 
   geom_boxplot(outlier.alpha = 0.1) + ylab(paste0('F',' - age ',ageSel)) + 
-  theme(plot.title = element_text(size = 15, face = "bold"))
+  theme(plot.title = element_text(size = 15, face = "bold"),axis.text.x = element_text(angle = 90, hjust = 1))
 
 ageSel <- 3
 p4 <-  ggplot(fishSel[fishSel$area == 'A' & fishSel$age == ageSel,],aes(x=year, y=data)) + 
   geom_boxplot(outlier.alpha = 0.1) + ylab(paste0('F',' - age ',ageSel)) + 
-  theme(plot.title = element_text(size = 15, face = "bold"))
+  theme(plot.title = element_text(size = 15, face = "bold"),axis.text.x = element_text(angle = 90, hjust = 1))
 
 ageSel <- 4
 p5 <-  ggplot(fishSel[fishSel$area == mFleet & fishSel$age == ageSel,],aes(x=year, y=data)) + 
   geom_boxplot(outlier.alpha = 0.1) + ylab(paste0('F',' - age ',ageSel)) + 
-  theme(plot.title = element_text(size = 15, face = "bold"))
+  theme(plot.title = element_text(size = 15, face = "bold"),axis.text.x = element_text(angle = 90, hjust = 1))
 
 ageSel <- 5
 p6 <-  ggplot(fishSel[fishSel$area == mFleet & fishSel$age == ageSel,],aes(x=year, y=data)) + 
   geom_boxplot(outlier.alpha = 0.1) + ylab(paste0('F',' - age ',ageSel)) + 
-  theme(plot.title = element_text(size = 15, face = "bold"))
+  theme(plot.title = element_text(size = 15, face = "bold"),axis.text.x = element_text(angle = 90, hjust = 1))
 
 ageSel <- 6
 p7 <-  ggplot(fishSel[fishSel$area == mFleet & fishSel$age == ageSel,],aes(x=year, y=data)) + 
   geom_boxplot(outlier.alpha = 0.1) + ylab(paste0('F',' - age ',ageSel)) + 
-  theme(plot.title = element_text(size = 15, face = "bold"))
+  theme(plot.title = element_text(size = 15, face = "bold"),axis.text.x = element_text(angle = 90, hjust = 1))
 
 ageSel <- 7
 p8 <-  ggplot(fishSel[fishSel$area == mFleet & fishSel$age == ageSel,],aes(x=year, y=data)) + 
   geom_boxplot(outlier.alpha = 0.1) + ylab(paste0('F',' - age ',ageSel)) + 
-  theme(plot.title = element_text(size = 15, face = "bold"))
+  theme(plot.title = element_text(size = 15, face = "bold"),axis.text.x = element_text(angle = 90, hjust = 1))
 
 ageSel <- 8
 p9 <-  ggplot(fishSel[fishSel$area == mFleet & fishSel$age == ageSel,],aes(x=year, y=data)) + 
   geom_boxplot(outlier.alpha = 0.1) + ylab(paste0('F',' - age ',ageSel)) + 
-  theme(plot.title = element_text(size = 15, face = "bold"))
+  theme(plot.title = element_text(size = 15, face = "bold"),axis.text.x = element_text(angle = 90, hjust = 1))
 
 
 p <- grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,p9)
