@@ -270,6 +270,7 @@ for (iYr in an(projPeriod)){
   }
   recruitBio     <- recruitBio * exp(sr.res[,ac(iYr),drop=T])
   stock.n(biol)[1,ac(iYr)] <- recruitBio
+  
 
   #- Plusgroup
   if (!is.na(range(biol,"plusgroup"))){
@@ -300,12 +301,19 @@ for (iYr in an(projPeriod)){
   stkAssessment@landings   <- computeLandings(stkAssessment)
 
   # smooth M prior to running the assessment, median filter of order 5
-  for(idxIter in 1:nits){
-    for(idxAge in 1:nAges){
-      stkAssessment@m[idxAge,,,,,idxIter] <- fitted(loess(data ~ year,data=data.frame(data=stkAssessment@m[idxAge,,,,,idxIter,drop=T],year=histMinYr:TaY),span=0.5))
-    }
-  }
+  require(doParallel); ncores <- detectCores()-1; ncores <- ifelse(nits<ncores,nits,ncores);cl <- makeCluster(ncores); registerDoParallel(cl)
+  dat     <- as.data.frame(stkAssessment@m)
+  datS    <- split(dat,as.factor(paste(dat$age,dat$iter)))
+  res     <- foreach(i = 1:length(datS)) %dopar% fitted(loess(data ~ year,data=datS[[i]],span=0.5))
+  stkAssessment@m <- FLQuant(c(aperm(array(unlist(res),dim=c(length(1947:TaY),nits,nAges)),c(3,1,2))),dimnames=dimnames(stkAssessment@m))
+  stopCluster(cl); detach("package:doParallel",unload=TRUE); detach("package:foreach",unload=TRUE); detach("package:iterators",unload=TRUE)
 
+#  for(idxIter in 1:nits){
+#    for(idxAge in 1:nAges){
+#      stkAssessment@m[idxAge,,,,,idxIter] <- fitted(loess(data ~ year,data=data.frame(data=stkAssessment@m[idxAge,,,,,idxIter,drop=T],year=histMinYr:TaY),span=0.5))
+#    }
+#  }
+#
   # update surveys
   for(idxSurvey in surveyNames){
     agesSurvey  <- an(rownames(surveys[[idxSurvey]]@index))
@@ -365,9 +373,9 @@ for (iYr in an(projPeriod)){
   CATCH[,ImY,,,"A"]        <- TAC[,ImY,,,"A"] + TAC_var[ImY,,'Ctransfer'] * TAC[,ImY,,,"C"]
   CATCH[,ImY,,,"B"]        <- TAC[,ImY,,,"B",drop=T] * TAC_var[ImY,,'Buptake',drop=T]
 
-  multso <- matrix(NA,nrow=nits,ncol=4)
-  for(idxIter in 1:nits)
-    multso[idxIter,] <- nls.lm(par=runif(4),fn=TAC2sel,iYr=ImY,iBiol=biol[,ImY],iFishery=fishery[,ImY],iTAC=CATCH[,ImY],catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,control=nls.lm.control(maxiter=1000),lower=rep(1e-8,4))$par
+  require(doParallel); ncores <- detectCores()-1; ncores <- ifelse(nits<ncores,nits,ncores);cl <- makeCluster(ncores); clusterEvalQ(cl,library(FLCore)); clusterEvalQ(cl,library(minpack.lm)); registerDoParallel(cl)
+  multso <- do.call(rbind,foreach(idxIter = 1:nits) %dopar% nls.lm(par=runif(4),fn=TAC2sel,iYr=ImY,iBiol=biol[,ImY],iFishery=fishery[,ImY],iTAC=CATCH[,ImY],catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,control=nls.lm.control(maxiter=1000),lower=rep(1e-8,4))$par)
+  stopCluster(cl); detach("package:doParallel",unload=TRUE); detach("package:foreach",unload=TRUE); detach("package:iterators",unload=TRUE)
 
   #Check for very high F
   idx <- which(quantMeans(sweep(landings.sel(fishery[,ac(ImY)]),3:6,t(multso),"*")[ac(2:6),,,,"A"]) > 5)
