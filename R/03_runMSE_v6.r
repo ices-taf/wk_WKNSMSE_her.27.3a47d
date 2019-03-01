@@ -64,6 +64,12 @@ if(BB == 0){
   BB  <- c("A","B")
 }
 
+ftarget   <- 0.26
+btrigger  <- 1.4e06
+HCR <- 'A'
+IAV <- NULL
+BB  <- NULL
+
 cat(ftarget,"\t",btrigger,"\t",HCR,"\t",IAV,"\t",BB,"\n")
 
 
@@ -79,7 +85,8 @@ library(stats)
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
 #path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
 #path <- 'D:/Repository/NSAS_MSE/wk_WKNSMSE_her.27.3a47d/R/'
-path <- "/home/hintz001/wk_WKNSMSE_her.27.3a47d/R"
+#path <- "/home/hintz001/wk_WKNSMSE_her.27.3a47d/R"
+path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -260,17 +267,19 @@ for (iYr in an(projPeriod)){
 
   #- Update recruitment
   recruitBio <- array( 0, dim=c(1,nits)) # initialize array
-  for(idxIter in 1:nits){
-    if(idxIter %in% itersSR)
-      recruitBio[idxIter] <- ifelse(  c(ssb(iter(biol[,ac(iYr-1)],idxIter)))<=params(iter(biol.sr,idxIter))["b"],
-                                      params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))),
-                                      params(iter(biol.sr,idxIter))["a"] * params(iter(biol.sr,idxIter))["b"])
-    if(idxIter %in% itersRI)
-      recruitBio[idxIter] <- params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))) * exp(-params(iter(biol.sr,idxIter))["b"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))))
-  }
+  
+  paramRec  <- params(biol.sr)
+  ssbRec  <- drop(ssb(biol[,ac(iYr-1)]))
+  
+  # Ricker
+  recruitBio[itersRI] <- paramRec['a',itersRI]*ssbRec[itersRI]*exp(-paramRec['b',itersRI]*ssbRec[itersRI])
+  # Segmented regression
+  idxSSR1 <- which(ssbRec[itersSR] <= paramRec['b',itersSR])
+  recruitBio[itersSR[idxSSR1]]    <- paramRec['a',itersSR[idxSSR1]]*ssbRec[itersSR[idxSSR1]]
+  recruitBio[itersSR[-idxSSR1]]   <- paramRec['a',itersSR[-idxSSR1]]*paramRec['b',itersSR[-idxSSR1]]
+  
   recruitBio     <- recruitBio * exp(sr.res[,ac(iYr),drop=T])
   stock.n(biol)[1,ac(iYr)] <- recruitBio
-  
 
   #- Plusgroup
   if (!is.na(range(biol,"plusgroup"))){

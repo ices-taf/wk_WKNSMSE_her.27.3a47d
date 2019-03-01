@@ -28,7 +28,8 @@ library(FLFleet)
 #path          <- "D:/Work/Herring MSE/NSAS/"
 #path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
-path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
+#path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
+path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
 #path <- '/home/berge057/ICES/wk_WKNSMSE_her.27.3a47d/R/'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
@@ -38,8 +39,6 @@ dataPath      <- file.path(".","data/")
 outPath       <- file.path(".","results/")
 scriptPath    <- file.path(".","side_scripts/")
 functionPath  <- file.path(".","functions/")
-
-flag_saveAll <- FALSE # flag to indicate whether we want to save every step of the initialization
 
 # loading function
 source(file.path(functionPath,"randBlocks.R"))
@@ -79,7 +78,7 @@ fullPeriod          <- c(histPeriod,projPeriod)
 recrPeriod          <- ac(2007:2017)
 selPeriod           <- ac(2007:2017)
 fecYears            <- ac(2007:2017)
-nits                <- 1000 # number of random samples
+nits                <- 10 # number of random samples
 
 # reading the raw M and applying plus group
 #raw_M             <- read.csv(file.path(dataPath,"Smoothed_span50_M_NotExtrapolated_NSASSMS2016.csv"),header=TRUE)
@@ -139,11 +138,6 @@ for(idxIter in 1:nits){
 
 biol          <- window(window(biol,end=histMaxYr+1),start=histMinYr,end=futureMaxYr) # extend the FLStock object to the full projection period
 biol@m.spwn[,ac(2018:2040)] <- 0.67
-
-if(flag_saveAll)
-  save( biol,
-        NSH.sim,
-        file=file.path(outPath,paste0(assessment_name,'init_MSE_3.RData')))
 
 #-------------------------------------------------------------------------------
 # 4) create FLStocks object using random samples (with future years as NA)
@@ -253,13 +247,8 @@ fishery@landings.sel[,yearsMulti,,,'C']          <- NSH3f.sam@harvest[,yearsMult
 fishery@landings.sel[,yearsMulti,,,'D']          <- NSH3f.sam@harvest[,yearsMulti,,,'BD']
 
 # landing.wt = catch.wt
-biol@landings.wt                                 <- biol@catch.wt
-
-if(flag_saveAll)
-  save( biol,
-        NSH.sim,
-        fishery,
-        file=file.path(outPath,paste0(assessment_name,'init_MSE_5.RData')))
+biol@landings.wt            <- biol@catch.wt
+biol@m[,histPeriod]         <- as.matrix(raw_M)
 
 #-------------------------------------------------------------------------------
 # 6) creating survey indices
@@ -370,32 +359,6 @@ for(surveyCurrent in surveyNames){
   
 }
 
-if(flag_saveAll)
-  save( biol,
-        NSH.sim,
-        fishery,
-        surveys,
-        surveyVars,
-        file=file.path(outPath,paste0(assessment_name,'init_MSE_6.RData')))
-
-# plotting survey indices
-#surveyName <- 'IBTS-Q1'
-
-#par(mfrow=c(4,2))
-#for(ageIdx in surveys[[surveyName]]@range[1]:surveys[[surveyName]]@range[2]){
-  #a     <-drop(NSH.tun[[surveyName]]@index)
-#a     <- NSH.tun[[surveyName]]@index # in case of only 1 age in survey object
-#  years <- as.numeric(colnames(NSH.tun[[surveyName]]@index))
-#  plot(years,a[ac(ageIdx),],type='l',ylab=c('age',ac(ageIdx)))
-#  
-#  for(idxIter in 1:100){
-#    b     <-surveys[[surveyName]]@index[ac(ageIdx),,,,,idxIter]
-#    b     <- b[,match(years,colnames(b))]
-#    lines(years,b,col='green')
-#  }
-#}
-
-
 #-------------------------------------------------------------------------------
 # 7) creating catches from each random samples
 # 
@@ -406,8 +369,6 @@ if(flag_saveAll)
 # Note 1: the raw M is used here, as opposed to the smoothed one used in the 
 # assessment
 #-------------------------------------------------------------------------------
-
-#load(file.path(outPath,paste0(assessment_name,'init_MSE_6.RData')))
 
 ############# initialize FLQuant object containing catch residuals #############
 dmns        <- dimnames(NSH@harvest)
@@ -465,28 +426,6 @@ biol@catch.n[,ac(1978:1979)]           <- NA
 biol@landings.n[,histPeriod] <-  FSelect/Z*(1-exp(-Z))*NSelect
 biol@landings <- computeLandings(biol)
 
-if(flag_saveAll)
-  save( biol,
-        catchVar,
-        NSH.sim,
-        fishery,
-        surveys,
-        surveyVars,
-        file=file.path(outPath,paste0(assessment_name,'init_MSE_7.RData')))
-
-# plotting the catches
-#par(mfrow=c(3,3))
-#for(ageIdx in 1:dim(NSH@catch.n)[1]){
-#  a     <- drop(NSH@catch.n)
-#  years <- histMinYr:histMaxYr # vector the years
-#  plot(years,a[ageIdx,],type='l',ylab=c('age',ac(ageIdx-1)))
-#  for(idxIter in 1:100){
-#    b     <- iter(biol@catch.n[ageIdx],idxIter)
-#    b     <- b[,match(years,colnames(b))]
-#    lines(years,b,col='green')
-#  }
-#}
-
 #-------------------------------------------------------------------------------
 # 8) C fleet: proportion of F of the C fleet for the future years
 # The proportion (all ages combined) is obtained from the multi-fleet assessment 
@@ -506,8 +445,6 @@ if(flag_saveAll)
 # depending on whether F accross the ages is additive. Should not this be based 
 # on the catch.
 #-------------------------------------------------------------------------------
-
-#load(file.path(outPath,paste0(assessment_name,'init_MSE_7.RData')))
 
 yrChainFC   <- randBlocks(an(fecYears),an(projPeriod),nits)
 ages        <- NSH3f.sam@range[1]:NSH3f.sam@range[2]
