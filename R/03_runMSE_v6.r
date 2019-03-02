@@ -40,6 +40,9 @@ if(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4]))) == 1){
 if(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4]))) == 2){
   IAV <- 'B'
 }
+if(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4]))) == 3){
+  IAV <- 'E'
+}
 
 # BB
 if(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][4]))) == 0){
@@ -50,6 +53,9 @@ if(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5]))) == 1){
 }
 if(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5]))) == 2){
   BB <- 'B'
+}
+if(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5]))) == 3){
+  BB <- 'E'
 }
 
 if(IAV == 0){
@@ -63,12 +69,6 @@ if(BB == 0){
 }else if(BB == "B"){
   BB  <- c("A","B")
 }
-
-ftarget   <- 0.26
-btrigger  <- 1.4e06
-HCR <- 'A'
-IAV <- NULL
-BB  <- NULL
 
 cat(ftarget,"\t",btrigger,"\t",HCR,"\t",IAV,"\t",BB,"\n")
 
