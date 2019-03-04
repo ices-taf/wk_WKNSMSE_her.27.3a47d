@@ -18,63 +18,23 @@
 #    load functions
 #-------------------------------------------------------------------------------
 
-#rm(list=ls())
+rm(list=ls())
 
+tempIter <- c(1.4e06,1.6e06,1.8e06,2e06)
 
-args=(commandArgs(TRUE))
-#args <- 'ftar=0.24_btrig=1.4e6_HCR=1_IAV=0_BB=0'
-args    <- strsplit(args,"_")
-ftarget <- as.numeric(substr(args[[1]][1],6,9))
-btrigger<- as.numeric(substr(args[[1]][2],7,11))
-
-# HCR
-HCR     <- ifelse(as.numeric(substr(args[[1]][3],5,nchar(args[[1]][3])))==1,"A","B")
-
-# IAV
-if(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4]))) == 0){
-  IAV <- 0
-}
-if(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4]))) == 1){
-  IAV <- 'A'
-}
-if(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4]))) == 2){
-  IAV <- 'B'
-}
-if(as.numeric(substr(args[[1]][4],5,nchar(args[[1]][4]))) == 3){
-  IAV <- 'E'
-}
-
-# BB
-if(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][4]))) == 0){
-  BB <- 0
-}
-if(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5]))) == 1){
-  BB <- 'A'
-}
-if(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5]))) == 2){
-  BB <- 'B'
-}
-if(as.numeric(substr(args[[1]][5],4,nchar(args[[1]][5]))) == 3){
-  BB <- 'E'
-}
-
-if(IAV == 0){
-  IAV <- NULL
-}else if(IAV == "B"){
-  IAV <- c("A","B")
-}
-
-if(BB == 0){
-  BB  <- NULL
-}else if(BB == "B"){
-  BB  <- c("A","B")
-}
+for(idxAll1 in 1:length(tempIter)){
+ftarget   <- 0.3
+btrigger  <- tempIter[idxAll1]
+BB        <- 'E'
+IAV       <- 'E'
+HCR       <- 'B'
 
 cat(ftarget,"\t",btrigger,"\t",HCR,"\t",IAV,"\t",BB,"\n")
 
 
 library(FLSAM)
 library(FLEDA)
+
 library(FLFleet)
 library(minpack.lm)  # install.packages("minpack.lm")
 library(stats)
@@ -86,8 +46,7 @@ library(stats)
 #path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
 #path <- 'D:/Repository/NSAS_MSE/wk_WKNSMSE_her.27.3a47d/R/'
 #path <- "/home/hintz001/wk_WKNSMSE_her.27.3a47d/R"
-path <- '/home/berge057/ICES/wk_WKNSMSE_her.27.3a47d/R/'
-#path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
+path <- "E:/git/wk_WKNSMSE_her.27.3a47d/R"
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -98,8 +57,8 @@ scriptPath    <- file.path(".","side_scripts/")
 functionPath  <- file.path(".","functions/")
 
 source(file.path(functionPath,"MSE_assessment.R"))
-source(file.path(functionPath,"forecastScenarios.r"))
-source(file.path(functionPath,"forecastFunctions.r"))
+source(file.path(path,"04_forecastScenarios.r"))
+source(file.path(path,"forecastFunctions.r"))
 
 #-------------------------------------------------------------------------------
 # 2) Initialize
@@ -119,18 +78,15 @@ nits                <- 10
 # load object
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessment.ctrl <- NSH.ctrl
-
-# load initialization for SAM
-load(file.path(outPath,paste('stkAssessment2018.init_',nits,'.RData',sep="")))
+load(file.path(outPath,"stkAssessment2018.init.RData"))
 
 # load MSE parameters
 load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_',ac(nits),'.RData')))
 fishery@landings.sel[,projPeriod] <- sweep(fishery@landings.sel[,projPeriod],c(2:6),quantMeans(fishery@landings.sel[,projPeriod]),"/")
-biol@harvest.spwn[] <- 0.67
 
 strFleet    <- c('A','B','C','D')
 nFleets     <- length(strFleet)
-nAges       <- dim(biol@stock.n)[1]
+nAges       <- dim(biol)[1]
 surveyNames <- names(surveys)
 escapeRuns  <- numeric()
 
@@ -161,19 +117,79 @@ runName         <- paste0("NSAS_Ftar_",referencePoints$Ftarget,
                               "_HCR_",managementRule$HCR,
                               "_TACIAV_",paste(managementRule$TACIAV,collapse=""),
                               "_BB_",paste(managementRule$BB,collapse=""),
-                              "_",nits,"iters")
+                              "_",nits,"iters.RData")
 
-newUptakes      <- T
+newUptakes      <- F
 #------------------------------------------------------------------------------#
-# 3) Housekeeping
+# 3) Define TACs for A, B and D fleets. 
+# TACs for A and B fleets are taken out of HAWG2018. This needs updating
+#
+# Note 1: The Cfleet is defined as a proportion of F.
+# Note 2: TAC for C and D fleets are for the WB
+# Note 3: TACs for the D fleet is kept constant for future years
 #------------------------------------------------------------------------------#
 
+TAC                       <- FLQuant(NA,dimnames=list(age='all',
+                                      year=histMinYr:(futureMaxYr+3),
+                                      unit=c('TAC'),
+                                      season='all',
+                                      area=c('A','B','C','D'),
+                                      iter=1:nits))
+
+#- TAC for A fleet in NS
+TAC_A                     <- read.table(file.path(dataPath,'TAC_A.csv'),sep = ",")
+TAC[,ac(TAC_A[,1]),,,"A"] <- TAC_A[,2]
+#- TAC for B fleet in NS
+TAC_B                     <- read.table(file.path(dataPath,'TAC_B.csv'),sep = ",")
+TAC[,ac(TAC_B[,1]),,,"B"] <- TAC_B[,2]
+#- TAC for D fleet in WB
+TAC_D                     <- read.table(file.path(dataPath,'TAC_D.csv'),sep = ",")
+TAC[,ac(TAC_D[,1]),,,"D"] <- TAC_D[,2]
+TAC[,ac((max(TAC_D[,1])+1):(futureMaxYr+3)),,,"D"] <- TAC[,ac(max(TAC_D[,1])),,,"D"] # TAC is fixed for the D fleet
+
+#- TAC for C fleet in WB
+TAC_C                     <- read.table(file.path(dataPath,'TAC_C.csv'),sep = ",")
+TAC[,ac(TAC_C[,1]),,,"C"] <- TAC_C[,2]
+#- Fixed TAC C in WB (used for transfer to the A fleet)
+TAC[,ac((max(TAC_C[,1])+1):(futureMaxYr+3)),,,"C"] <- TAC_C[dim(TAC_C)[1],2]
+
+if(newUptakes){
+  #- setup variables for transfer, uptake and split
+  uptakeFleets              <- read.table(file.path(dataPath,'over_underfishing2017.csv'),sep = ",")
+
+  #- Transfer from C fleet TAC to fleet A
+  Ctransfer                 <- matrix(runif((length(projPeriod)+3)*nits,min=0.4, max=0.5),nrow=nits,ncol=length(projPeriod)+3)    # Transfer of TAC from IIIa to IVa for C fleet in assessment year. Set between 0.4 and 0.5
+  # update for the D fleets
+  Duptake                   <- matrix(1,nrow=nits,ncol=length(projPeriod)+3)    # assume full uptake for the D fleet
+  DSplitHist                <- read.table(file.path(dataPath,'D_split.csv'),sep = ",") # get mean and sd from historical data for NSAS/WBSS split for the D fleet
+  Dsplit                    <- matrix(rnorm((length(projPeriod)+3)*nits,
+                                      mean=mean(DSplitHist$V2),
+                                      sd=sd(DSplitHist$V2)/2),
+                                      nrow=nits,ncol=length(projPeriod)+3)
+  #Dsplit                    <- matrix(rnorm((length(projPeriod)+3)*nits,mean=0.6,sd=0.1),nrow=nits,ncol=length(projPeriod)+3)
+  # update for the B fleet
+  Buptake                   <- matrix(rnorm ((length(projPeriod)+3)*nits,
+                                      mean(an(as.vector(uptakeFleets[2:16,3])),na.rm=TRUE), # mean over available historical values
+                                      sd(an(as.vector(uptakeFleets[2:16,3])),na.rm=TRUE)/2),   # sd over available historical values
+                                      nrow=nits,ncol=length(projPeriod)+3)
+  TAC_var                   <- array(NA,
+                                     dim=c(length(projPeriod)+3,nits,4),
+                                     dimnames=list('years' = ac(an(projPeriod)[1]:(an(projPeriod)[length(projPeriod)]+3)),
+                                                   'iter' = 1:nits,
+                                                   'var' = c('Ctransfer','Duptake','Dsplit','Buptake')))
+  TAC_var[,,'Ctransfer']    <- t(Ctransfer)
+  TAC_var[,,'Duptake']      <- t(Duptake)
+  TAC_var[,,'Dsplit']       <- t(Dsplit)
+  TAC_var[,,'Buptake']      <- t(Buptake)
+
+  save(Ctransfer,Duptake,DSplitHist,Dsplit,Buptake,TAC_var,file=file.path(outPath,paste0("SplitUptakes",nits,".RData")))
+} else {
+  load(file.path(outPath,paste0("SplitUptakes",nits,".RData")))
+}
 CATCH                     <- TAC
-FHCR                      <- FLQuant(NA, dimnames=list(age=0:8,year=ac(an(projPeriod[1]):(an(projPeriod[length(projPeriod)])+3)),unit="unique",season="all",area="unique",iter=1:nits))
-SSBHCR                    <- FLQuant(NA, dimnames=list(age="all",year=ac(an(projPeriod[1]):(an(projPeriod[length(projPeriod)])+3)),unit="unique",season=c("FcY","CtY"),area="unique",iter=1:nits))
 
 #------------------------------------------------------------------------------#
-# 4) Start running the MSE
+# 2) Start running the MSE
 #------------------------------------------------------------------------------#
 
 start.time          <- Sys.time()
@@ -204,23 +220,15 @@ for (iYr in an(projPeriod)){
 
   #- Update recruitment
   recruitBio <- array( 0, dim=c(1,nits)) # initialize array
-  
-  paramRec  <- params(biol.sr)
-  ssbRec  <- drop(ssb(biol[,ac(iYr-1)]))
-  
-  # Ricker
-  recruitBio[itersRI] <- paramRec['a',itersRI]*ssbRec[itersRI]*exp(-paramRec['b',itersRI]*ssbRec[itersRI])
-  # Segmented regression
-  idxSSR1 <- which(ssbRec[itersSR] <= paramRec['b',itersSR])
-  # if loop to cover the case of idxSSR1 being empty
-  if(length(idxSSR1)!=0){
-    recruitBio[itersSR[idxSSR1]]    <- paramRec['a',itersSR[idxSSR1]]*ssbRec[itersSR[idxSSR1]] # SSB < b (slope)
-    recruitBio[itersSR[-idxSSR1]]   <- paramRec['a',itersSR[-idxSSR1]]*paramRec['b',itersSR[-idxSSR1]] # SSB > b (plateau)
-  }else{
-    recruitBio[itersSR[idxSSR1]]    <- paramRec['a',itersSR]*paramRec['b',itersSR]
+  for(idxIter in 1:nits){
+    if(idxIter %in% itersSR)
+      recruitBio[idxIter] <- ifelse(  c(ssb(iter(biol[,ac(iYr-1)],idxIter)))<=params(iter(biol.sr,idxIter))["b"],
+                                      params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))),
+                                      params(iter(biol.sr,idxIter))["a"] * params(iter(biol.sr,idxIter))["b"])
+    if(idxIter %in% itersRI)
+      recruitBio[idxIter] <- params(iter(biol.sr,idxIter))["a"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))) * exp(-params(iter(biol.sr,idxIter))["b"] * c(ssb(iter(biol[,ac(iYr-1)],idxIter))))
   }
-  
-  recruitBio     <- recruitBio * exp(sr.res[,ac(iYr),drop=T])
+  recruitBio     <- recruitBio * exp(drop(sr.res[,ac(iYr)]))
   stock.n(biol)[1,ac(iYr)] <- recruitBio
 
   #- Plusgroup
@@ -252,19 +260,12 @@ for (iYr in an(projPeriod)){
   stkAssessment@landings   <- computeLandings(stkAssessment)
 
   # smooth M prior to running the assessment, median filter of order 5
-  require(doParallel); ncores <- detectCores()-1; ncores <- ifelse(nits<ncores,nits,ncores);cl <- makeCluster(ncores); registerDoParallel(cl)
-  dat     <- as.data.frame(stkAssessment@m)
-  datS    <- split(dat,as.factor(paste(dat$age,dat$iter)))
-  res     <- foreach(i = 1:length(datS)) %dopar% fitted(loess(data ~ year,data=datS[[i]],span=0.5))
-  stkAssessment@m <- FLQuant(c(aperm(array(unlist(res),dim=c(length(1947:TaY),nits,nAges)),c(3,1,2))),dimnames=dimnames(stkAssessment@m))
-  stopCluster(cl); detach("package:doParallel",unload=TRUE); detach("package:foreach",unload=TRUE); detach("package:iterators",unload=TRUE)
+  for(idxIter in 1:nits){
+    for(idxAge in 1:nAges){
+      stkAssessment@m[idxAge,,,,,idxIter] <- fitted(loess(data ~ year,data=data.frame(data=stkAssessment@m[idxAge,,,,,idxIter,drop=T],year=histMinYr:TaY),span=0.5))
+    }
+  }
 
-#  for(idxIter in 1:nits){
-#    for(idxAge in 1:nAges){
-#      stkAssessment@m[idxAge,,,,,idxIter] <- fitted(loess(data ~ year,data=data.frame(data=stkAssessment@m[idxAge,,,,,idxIter,drop=T],year=histMinYr:TaY),span=0.5))
-#    }
-#  }
-#
   # update surveys
   for(idxSurvey in surveyNames){
     agesSurvey  <- an(rownames(surveys[[idxSurvey]]@index))
@@ -301,13 +302,13 @@ for (iYr in an(projPeriod)){
   #-------------------------------------------------------------------------------
   # Forecast
   #-------------------------------------------------------------------------------
+  
+  source(file.path(functionPath,"MSE_assessment.R"))
+  source(file.path(path,"04_forecastScenarios.r"))
+  source(file.path(path,"forecastFunctions.r"))
   #(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementRule)
   projNSAS                  <- projectNSH(stkAssessment,fishery,iYr,TAC,histMaxYr,referencePoints,managementRule)
   TAC[,FcY,,,c("A","B")]    <- projNSAS$TAC[,,,,c("A","B")]
-  FHCR[,FcY]                <- projNSAS$Fbar
-  SSBHCR[,FcY,,"FcY"]       <- projNSAS$SSB$FcY #store HCR SSB in the forecast year
-  SSBHCR[,FcY,,"CtY"]       <- projNSAS$SSB$CtY #store HCR SSB in the continuation year
-
   cat("\n Finished forecast \n")
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
 
@@ -324,9 +325,9 @@ for (iYr in an(projPeriod)){
   CATCH[,ImY,,,"A"]        <- TAC[,ImY,,,"A"] + TAC_var[ImY,,'Ctransfer'] * TAC[,ImY,,,"C"]
   CATCH[,ImY,,,"B"]        <- TAC[,ImY,,,"B",drop=T] * TAC_var[ImY,,'Buptake',drop=T]
 
-  require(doParallel); ncores <- detectCores()-1; ncores <- ifelse(nits<ncores,nits,ncores);cl <- makeCluster(ncores); clusterEvalQ(cl,library(FLCore)); clusterEvalQ(cl,library(minpack.lm)); registerDoParallel(cl)
-  multso <- do.call(rbind,foreach(idxIter = 1:nits) %dopar% nls.lm(par=runif(4),fn=TAC2sel,iYr=ImY,iBiol=biol[,ImY],iFishery=fishery[,ImY],iTAC=CATCH[,ImY],catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,control=nls.lm.control(maxiter=1000),lower=rep(1e-8,4))$par)
-  stopCluster(cl); detach("package:doParallel",unload=TRUE); detach("package:foreach",unload=TRUE); detach("package:iterators",unload=TRUE)
+  multso <- matrix(NA,nrow=nits,ncol=4)
+  for(idxIter in 1:nits)
+    multso[idxIter,] <- nls.lm(par=runif(4),fn=TAC2sel,iYr=ImY,iBiol=biol[,ImY],iFishery=fishery[,ImY],iTAC=CATCH[,ImY],catchVar=catchVar,TAC_var=TAC_var,iTer=idxIter,control=nls.lm.control(maxiter=1000),lower=rep(1e-8,4))$par
 
   #Check for very high F
   idx <- which(quantMeans(sweep(landings.sel(fishery[,ac(ImY)]),3:6,t(multso),"*")[ac(2:6),,,,"A"]) > 5)
@@ -343,5 +344,5 @@ for (iYr in an(projPeriod)){
   cat(paste("\n Time running",round(difftime(Sys.time(),start.time,unit="mins"),0),"minutes \n"))
 }
 save.image(file=paste(outPath,runName,".RData",sep=""))
-
+}
 

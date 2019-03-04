@@ -98,6 +98,7 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
   for(i in dms$unit) stf@stock.n[2:(dims(stf)$age-1),FcY,i]  <- (stf@stock.n[,ImY,1]*exp(-unitSums(stf@harvest[,ImY])-stf@m[,ImY,1]))[ac(range(stf)["min"]:(range(stf)["max"]-2)),]
   for(i in dms$unit) stf@stock.n[dims(stf)$age,FcY,i]        <- apply((stf@stock.n[,ImY,1]*exp(-unitSums(stf@harvest[,ImY])-stf@m[,ImY,1]))[ac((range(stf)["max"]-1):range(stf)["max"]),],2:6,sum,na.rm=T)
   stf@harvest[,FcY]                                          <- stf@harvest[,ImY]
+
   ###--- Management options ---###
 
   #- HCR A
@@ -105,8 +106,13 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
 
   if(managementRule$HCR == "A"){
     for(iTer in 1:dims(stf)$iter){
-      res[,iTer]              <- nls.lm(par=rep(1,2),find.FAB_HCRA,stk=stf[,FcY,c("A","B"),,,iTer],f01=f01,f26=f26,TACS=iTAC[,FcY,c("A","B"),,,iTer],
-                                        mpPoints=mpPoints,jac=NULL,lower=rep(1e-8,2),upper=rep(1e5,2),control=nls.lm.control(maxiter=1000))$par
+      res[,iTer]              <- nls.lm(par=rep(1,2),find.FAB_HCRA,
+                                        stk=stf[,FcY,c("A","B"),,,iTer],
+                                        f01=f01,
+                                        f26=f26,
+                                        TACS=iTAC[,FcY,c("A","B"),,,iTer],
+                                        mpPoints=mpPoints,
+                                        jac=NULL,lower=rep(1e-8,2),upper=rep(1e5,2),control=nls.lm.control(maxiter=1000))$par
     }
   }
   #- HCR B
