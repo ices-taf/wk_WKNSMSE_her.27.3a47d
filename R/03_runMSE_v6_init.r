@@ -42,8 +42,8 @@ library(stats)
 #path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
 #path <- 'D:/Repository/NSAS_MSE/wk_WKNSMSE_her.27.3a47d/R/'
 #path <- "/home/hintz001/wk_WKNSMSE_her.27.3a47d/R"
-#path <- '/home/berge057/ICES/wk_WKNSMSE_her.27.3a47d/R/'
-path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
+path <- '/home/berge057/ICES/wk_WKNSMSE_her.27.3a47d/R/'
+#path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
