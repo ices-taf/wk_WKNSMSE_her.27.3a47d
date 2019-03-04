@@ -107,7 +107,7 @@ managementRule  <- list(HCR = HCR,
                         TACIAV=IAV, #"A","A+B","NULL"
                         BB = BB)
 
-runName         <- paste0('stkAssessment2018.init_',nits,'.RData')
+runName         <- paste0('stkAssessment2018.init_',nits)
 
 #------------------------------------------------------------------------------#
 # 3) Housekeeping
