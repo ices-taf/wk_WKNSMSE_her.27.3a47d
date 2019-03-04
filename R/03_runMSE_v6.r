@@ -115,7 +115,7 @@ source(file.path(functionPath,"forecastFunctions.r"))
 #     - F sel: FAsel, FCsel, FBDsel
 #-------------------------------------------------------------------------------
 
-nits                <- 10
+nits                <- 200
 # load object
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessment.ctrl <- NSH.ctrl
@@ -127,6 +127,7 @@ load(file.path(outPath,paste('stkAssessment2018.init_',nits,'.RData',sep="")))
 load(file.path(outPath,paste0(assessment_name,'_parameters_MSE_',ac(nits),'.RData')))
 fishery@landings.sel[,projPeriod] <- sweep(fishery@landings.sel[,projPeriod],c(2:6),quantMeans(fishery@landings.sel[,projPeriod]),"/")
 biol@harvest.spwn[] <- 0.67
+
 
 strFleet    <- c('A','B','C','D')
 nFleets     <- length(strFleet)
@@ -163,7 +164,6 @@ runName         <- paste0("NSAS_Ftar_",referencePoints$Ftarget,
                               "_BB_",paste(managementRule$BB,collapse=""),
                               "_",nits,"iters")
 
-newUptakes      <- T
 #------------------------------------------------------------------------------#
 # 3) Housekeeping
 #------------------------------------------------------------------------------#
