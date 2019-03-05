@@ -42,8 +42,8 @@ library(stats)
 #path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
 #path <- 'D:/Repository/NSAS_MSE/wk_WKNSMSE_her.27.3a47d/R/'
 #path <- "/home/hintz001/wk_WKNSMSE_her.27.3a47d/R"
-#path <- '/home/berge057/ICES/wk_WKNSMSE_her.27.3a47d/R/'
-path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
+path <- '/home/berge057/ICES/wk_WKNSMSE_her.27.3a47d/R/'
+#path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -71,7 +71,7 @@ source(file.path(functionPath,"forecastFunctions.r"))
 #     - F sel: FAsel, FCsel, FBDsel
 #-------------------------------------------------------------------------------
 
-nits                <- 200
+nits                <- 1000
 # load object
 load(file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 stkAssessment.ctrl <- NSH.ctrl

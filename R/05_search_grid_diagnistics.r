@@ -27,13 +27,14 @@ require(ggplot2)
 library(gridExtra)
 library(RColorBrewer)
 library(grid)
+library(FLSAM)
 
 # define path to directory
 #path          <- "D:/Work/Herring MSE/NSAS/"
 #path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
-#path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
-path <- 'D:/git/wk_WKNSMSE_her.27.3a47d/R'
+path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
+#path <- 'D:/git/wk_WKNSMSE_her.27.3a47d/R'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -58,12 +59,18 @@ if(PNG) png(file.path(outPath,'plots',paste0(outputName,"_%02d.png")),
 # 2) plotting grid search for different cases
 #-------------------------------------------------------------------------------
 
+# define string array for f01 and f26
+f01         <- ac(0:1)
+f26         <- ac(2:6)
+
 #list_HCR <- c('A','B')
 list_HCR <- c('A',
               'B',
               'B_IAV_AB_BB_AB',
               'A_IAV_AB_BB_AB',
               'A_IAV_A_BB_A')
+
+list_HCR <- c('A')
 
 #'B',
 #'B_IAV_AB_BB_AB',
@@ -91,7 +98,8 @@ Btrig     <- array(NA, dim=c(1,length(fileList)))
 LTY       <- array(NA, dim=c(1,length(fileList)))
 LTR       <- array(NA, dim=c(1,length(fileList)))
 LTIAV     <- array(NA, dim=c(1,length(fileList)))
-LTFbar    <- array(NA, dim=c(1,length(fileList)))
+LTF01     <- array(NA, dim=c(1,length(fileList)))
+LTF26     <- array(NA, dim=c(1,length(fileList)))
 idxFile   <- 1
 
 metricsPeriod <- projPeriod[(length(projPeriod)-10):(length(projPeriod)-1)]
@@ -133,9 +141,14 @@ for(fileName in fileList){
   }
   
   # Fbar
-  fbarMat <- drop(fbar(biol[,metricsPeriod]))
+  FHCR26      <- FHCR[f26,ac(2019:2038)]
+  FHCR01      <- FHCR[f01,ac(2019:2038)]
   
-  fbarQuant <- apply(fbarMat, 1, quantile, probs=c(0.05, 0.5, 0.95), na.rm=TRUE)
+  f01Mat <- apply(drop(FHCR01[,metricsPeriod]),c(2,3),'mean')
+  f26Mat <- apply(drop(FHCR26[,metricsPeriod]),c(2,3),'mean')
+  
+  f01Quant <- apply(f01Mat, 1, quantile, probs=c(0.05, 0.5, 0.95), na.rm=TRUE)
+  f26Quant <- apply(f26Mat, 1, quantile, probs=c(0.05, 0.5, 0.95), na.rm=TRUE)
 
   # IAV
   IAVMat  <- apply(drop(biol[,metricsPeriod]@catch), 2, diff, na.rm=TRUE) # get the differences between years
@@ -150,7 +163,8 @@ for(fileName in fileList){
   LTR[idxFile]      <- max(SSB_prob) #length(which(SSB_bool))/nits
   LTY[idxFile]      <- mean(catchQuant['50%',])
   LTIAV[idxFile]    <- mean(IAVQuant['50%',])
-  LTFbar[idxFile]   <- mean(fbarQuant['50%',])
+  LTF01[idxFile]    <- mean(f01Quant['50%',])
+  LTF26[idxFile]    <- mean(f26Quant['50%',])
   
   
   idxFile <- idxFile + 1
@@ -164,7 +178,8 @@ BtrigUnique   <- sort(BtrigUnique)
 LTYMat      <- array(NA, dim=c(length(FtarUnique),length(BtrigUnique)),dimnames = list(FtarUnique,BtrigUnique)) # long term yield
 IAVMat      <- array(NA, dim=c(length(FtarUnique),length(BtrigUnique)),dimnames = list(FtarUnique,BtrigUnique)) # IAV
 LTRMat      <- array(NA, dim=c(length(FtarUnique),length(BtrigUnique)),dimnames = list(FtarUnique,BtrigUnique)) # long term risk
-LTFbarMat   <- array(NA, dim=c(length(FtarUnique),length(BtrigUnique)),dimnames = list(FtarUnique,BtrigUnique)) # long term risk
+LTF01Mat    <- array(NA, dim=c(length(FtarUnique),length(BtrigUnique)),dimnames = list(FtarUnique,BtrigUnique)) # long realised F01
+LTF26Mat    <- array(NA, dim=c(length(FtarUnique),length(BtrigUnique)),dimnames = list(FtarUnique,BtrigUnique)) # long realised F26
 
 for(idxFtar in 1:length(FtarUnique)){
   for(idxBtrig in 1:length(BtrigUnique)){
@@ -174,7 +189,8 @@ for(idxFtar in 1:length(FtarUnique)){
       LTYMat[idxFtar,idxBtrig]    <- LTY[idxMatch]
       IAVMat[idxFtar,idxBtrig]    <- abs(LTIAV[idxMatch])
       LTRMat[idxFtar,idxBtrig]    <- LTR[idxMatch]
-      LTFbarMat[idxFtar,idxBtrig] <- LTFbar[idxMatch]
+      LTF01Mat[idxFtar,idxBtrig]  <- LTF01[idxMatch]
+      LTF26Mat[idxFtar,idxBtrig]  <- LTF26[idxMatch]
     }
   }
 }
@@ -218,16 +234,29 @@ write.table(IAV_vec,
             sep = ",",
             row.names = FALSE)
 
-################## Fbar ##################
+################## F01 ##################
 
 #- Fbar - Turn data into data.frame for writing
-Fbar_vec            <- as.data.frame(as.table(LTFbarMat))
-colnames(IAV_vec)   <- c("Ftarget","Btrigger","Fbar")
-IAV_vec$Ftarget     <- as.numeric(as.character(IAV_vec$Ftarget))
-IAV_vec$Btrigger    <- as.numeric(as.character(IAV_vec$Btrigger))
+F01_vec            <- as.data.frame(as.table(LTF01Mat))
+colnames(F01_vec)   <- c("Ftarget","Btrigger","F01")
+F01_vec$Ftarget     <- as.numeric(as.character(F01_vec$Ftarget))
+F01_vec$Btrigger    <- as.numeric(as.character(F01_vec$Btrigger))
 
-write.table(IAV_vec,
-            file.path(outPath,paste0('grid_HCR_',HCRPlot),paste0(outputName,'_',HCRPlot,'_Fbar_vec','.csv')),
+write.table(F01_vec,
+            file.path(outPath,paste0('grid_HCR_',HCRPlot),paste0(outputName,'_',HCRPlot,'_F01_vec','.csv')),
+            sep = ",",
+            row.names = FALSE)
+
+################## F26 ##################
+
+#- Fbar - Turn data into data.frame for writing
+F26_vec            <- as.data.frame(as.table(LTF26Mat))
+colnames(F26_vec)   <- c("Ftarget","Btrigger","F26")
+F26_vec$Ftarget     <- as.numeric(as.character(F26_vec$Ftarget))
+F26_vec$Btrigger    <- as.numeric(as.character(F26_vec$Btrigger))
+
+write.table(F26_vec,
+            file.path(outPath,paste0('grid_HCR_',HCRPlot),paste0(outputName,'_',HCRPlot,'_F26_vec','.csv')),
             sep = ",",
             row.names = FALSE)
 
@@ -283,9 +312,9 @@ write.table(rbind(BtrigString,cbind(FtarUnique,LTRMat)),
             quote = FALSE,
             append=TRUE)
 
-# write fbar results
-BtrigString <- c('Fbar',BtrigUnique)
-write.table(rbind(BtrigString,cbind(FtarUnique,LTFbarMat)),
+# write f01 results
+BtrigString <- c('F01',BtrigUnique)
+write.table(rbind(BtrigString,cbind(FtarUnique,LTF01Mat)),
             file.path(outPath,paste0(outputName,'.csv')),
             sep = ",",
             col.names=FALSE,
@@ -293,15 +322,21 @@ write.table(rbind(BtrigString,cbind(FtarUnique,LTFbarMat)),
             quote = FALSE,
             append=TRUE)
 
-#write.table(LTYMat,file.path(outPath,paste0('grid_HCR_',HCRPlot,'_LTY.csv')),sep = ",",col.names=NA,append=TRUE)
-#write.table(IAVMat,file.path(outPath,paste0('grid_HCR_',HCRPlot,'_IAV.csv')),sep = ",",col.names=NA,append=TRUE)
-#write.table(LTRMat,file.path(outPath,paste0('grid_HCR_',HCRPlot,'_LTR.csv')),sep = ",",col.names=NA,append=TRUE)
+# write f26 results
+BtrigString <- c('F26',BtrigUnique)
+write.table(rbind(BtrigString,cbind(FtarUnique,LTF26Mat)),
+            file.path(outPath,paste0(outputName,'.csv')),
+            sep = ",",
+            col.names=FALSE,
+            row.names = FALSE,
+            quote = FALSE,
+            append=TRUE)
 
 ################### Plotting
 
 # create data frame for plotting
-plotMat <- as.data.frame(cbind(melt(LTYMat),melt(abs(IAVMat))$value,melt(LTRMat)$value,melt(LTFbarMat)$value))
-colnames(plotMat)   <- c("Ftarget","Btrigger","LTY","IAV","LTR",'Fbar')
+plotMat <- as.data.frame(cbind(melt(LTYMat),melt(abs(IAVMat))$value,melt(LTRMat)$value,melt(LTF01Mat)$value,melt(LTF26Mat)$value))
+colnames(plotMat)   <- c("Ftarget","Btrigger","LTY","IAV","LTR",'LTRF01','LTRF26')
 plotRowNames        <- ac(round(plotMat$LTY))
 plotRowNames[which(is.na(plotRowNames))] <- paste0(plotRowNames[which(is.na(plotRowNames))],ac(1:length(which(is.na(plotRowNames)))))
 rownames(plotMat)   <- plotRowNames
@@ -384,21 +419,40 @@ p3 <- p3 + theme( panel.grid.major = element_blank(),
                   panel.background = element_blank(), 
                   panel.border = element_blank())
 
-# Fbar
-plotLabelsLTFbar    <- ac(round(plotMat$Fbar*1e4)/1e4)
-treshold_low  <- 0.15
-treshold_high <- 0.35
-plotMat$Fbar[plotMat$Fbar < treshold_low]   <- treshold_low
-plotMat$Fbar[plotMat$Fbar > treshold_high]  <- treshold_high
+# F01
+plotLabelsLTF01    <- ac(round(plotMat$LTRF01*1e4)/1e4)
+treshold_low  <- 0
+treshold_high <- 0.1
+plotMat$LTRF01[plotMat$LTRF01 < treshold_low]   <- treshold_low
+plotMat$LTRF01[plotMat$LTRF01 > treshold_high]  <- treshold_high
 
-p4 <- ggplot(plotMat,aes(x=plotMat$Btrigger, y=plotMat$Ftarget, fill=plotMat$Fbar,label=plotLabelsLTFbar))
-p4 <- p4 + geom_tile(aes(x=plotMat$Btrigger, y=plotMat$Ftarget, fill=plotMat$Fbar)) 
-p4 <- p4 + scale_fill_gradientn(name='Fbar',colours = rev(myPalette(4)),
+p4 <- ggplot(plotMat,aes(x=plotMat$Btrigger, y=plotMat$Ftarget, fill=plotMat$LTRF01,label=plotLabelsLTF01))
+p4 <- p4 + geom_tile(aes(x=plotMat$Btrigger, y=plotMat$Ftarget, fill=plotMat$LTRF01)) 
+p4 <- p4 + scale_fill_gradientn(name='F01',colours = rev(myPalette(4)),
                                 limits=c(treshold_low,treshold_high),na.value="white")
 p4 <- p4 + xlab('Btrigger') + ylab('Ftarget')
 p4 <- p4 + scale_x_continuous(breaks=BtrigUnique) + scale_y_continuous(breaks=FtarUnique)
 p4 <- p4 + geom_text()
 p4 <- p4 + theme( panel.grid.major = element_blank(), 
+                  panel.grid.minor = element_blank(),
+                  panel.background = element_blank(), 
+                  panel.border = element_blank())
+
+# F26
+plotLabelsLTF26    <- ac(round(plotMat$LTRF26*1e4)/1e4)
+treshold_low  <- 0
+treshold_high <- 0.5
+plotMat$LTRF26[plotMat$LTRF26 < treshold_low]   <- treshold_low
+plotMat$LTRF26[plotMat$LTRF26 > treshold_high]  <- treshold_high
+
+p5 <- ggplot(plotMat,aes(x=plotMat$Btrigger, y=plotMat$Ftarget, fill=plotMat$LTRF26,label=plotLabelsLTF26))
+p5 <- p5 + geom_tile(aes(x=plotMat$Btrigger, y=plotMat$Ftarget, fill=plotMat$LTRF26)) 
+p5 <- p5 + scale_fill_gradientn(name='F26',colours = rev(myPalette(4)),
+                                limits=c(treshold_low,treshold_high),na.value="white")
+p5 <- p5 + xlab('Btrigger') + ylab('Ftarget')
+p5 <- p5 + scale_x_continuous(breaks=BtrigUnique) + scale_y_continuous(breaks=FtarUnique)
+p5 <- p5 + geom_text()
+p5 <- p5 + theme( panel.grid.major = element_blank(), 
                   panel.grid.minor = element_blank(),
                   panel.background = element_blank(), 
                   panel.border = element_blank())
@@ -415,12 +469,12 @@ if(HCRPlot == 'B') HCRCode <- 'B'
 if(HCRPlot =='A_IAV_A_BB_A') HCRCode <- 'A+C'
 if(HCRPlot =='B_IAV_A_BB_A') HCRCode <- 'B+C'
 if(HCRPlot =='A_IAV_AB_BB_AB') HCRCode <- 'A+D'
-if(HCRPlot =='B_IAV_AB_BB_AB') HCRCode <- 'B+D'
+if(HCRPlot =='B_IAV_AB_BB_AB') HCRCode <- 'B+E'
 
 titlePlot <- paste0(HCRCode,' - IAV fleet ',IAVstr,' - BB fleet ',BBstr)
 
-p <- grid.arrange(p1, p2, p3, p4,top = textGrob(titlePlot,gp=gpar(fontsize=20,
-                                                               font=2)),ncol=1)
+p <- grid.arrange(p1, p2, p3, p4,p5, top = textGrob(titlePlot,gp=gpar(fontsize=20,
+                                                                      font=2)),ncol=1)
 
 print(p)
 }
