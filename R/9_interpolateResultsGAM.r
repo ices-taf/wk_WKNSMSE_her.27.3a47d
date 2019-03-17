@@ -23,7 +23,8 @@ rm(list=ls())
 library(mgcv)
 library(lattice)
 
-path <- 'D:/git/wk_WKNSMSE_her.27.3a47d/R'
+#path <- 'D:/git/wk_WKNSMSE_her.27.3a47d/R'
+path <- 'C:/git/wk_WKNSMSE_her.27.3a47d/R'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -49,20 +50,25 @@ if(PNG) png(file.path(outPath,'plots',paste0(outputName,"_%02d.png")),
 #-------------------------------------------------------------------------------
 
 # interpolated sequences
-FtarInter   <- seq(0.15,0.35,0.01)
-BtrigInter  <- seq(0.8e6,2.4e6,0.1e6)
+FtarInter   <- seq(0.15,0.30,0.01)
+BtrigInter  <- seq(0.8e6,2.2e6,0.1e6)
 
 
 list_HCR <- c('A',
-              'B_IAV_AB_BB_AB',
-              'A_IAV_AB_BB_AB')
+              'B',
+              'A_IAV_AB_BB_AB',
+              'A_IAV_A_BB_A',
+              'B_IAV_E_BB_E')
+
+optPoints <- data.frame(matrix(ncol = 3, nrow = length(list_HCR)))
+colnames(optPoints) <- c('case','Ftar','Btrig')
 
 # loop through the grids
 
 for(idxHCR in 1:length(list_HCR)){
   HCRString <- list_HCR[idxHCR]
   
-  LTR     <- read.csv(file.path(outPath,paste0('grid_HCR_',HCRString),paste0('grid_search_',HCRString,'_LTR_vec','.csv')))
+  LTR     <- read.csv(file.path(outPath,paste0('grid_HCR_',HCRString),paste0('grid_search_',HCRString,'_LTR3_vec','.csv')))
   LTY     <- read.csv(file.path(outPath,paste0('grid_HCR_',HCRString),paste0('grid_search_',HCRString,'_LTY_vec','.csv')))
   IAV     <- read.csv(file.path(outPath,paste0('grid_HCR_',HCRString),paste0('grid_search_',HCRString,'_IAV_vec','.csv')))
   
@@ -70,7 +76,7 @@ for(idxHCR in 1:length(list_HCR)){
                                    Btrigger=BtrigInter)
   
   # fit LTR
-  gamData$LTR_gam       <- predict.gam(gam(Risk ~  s(Ftarget,Btrigger),data=LTR),newdata=gamData)
+  gamData$LTR_gam       <- predict.gam(gam(Risk3 ~  s(Ftarget,Btrigger),data=LTR),newdata=gamData)
   
   # fit LTY
   gamData$LTY_gam       <- predict.gam(gam(yield ~  s(Ftarget,Btrigger),data=LTY),newdata=gamData)
@@ -84,7 +90,7 @@ for(idxHCR in 1:length(list_HCR)){
   
   for(idxCoarse in 1:dim(LTR)[1]){
     idxInit <- which(gamDataCoarse$Ftarget[idxCoarse] == LTR$Ftarget & gamDataCoarse$Btrigger[idxCoarse] == LTR$Btrigger)
-    gamDataCoarse$LTR_sim[idxCoarse]    <- LTR$Risk[idxInit]
+    gamDataCoarse$LTR_sim[idxCoarse]    <- LTR$Risk3[idxInit]
     gamDataCoarse$LTY_sim[idxCoarse]    <- LTY$yield[idxInit]
     gamDataCoarse$IAV_sim[idxCoarse]    <- IAV$IAV[idxInit]
     
@@ -92,29 +98,42 @@ for(idxHCR in 1:length(list_HCR)){
     gamDataCoarse$LTR_gamFit[idxCoarse] <- abs(gamDataCoarse$LTR_sim[idxCoarse] - gamDataCoarse$LTR_gam[idxCoarse])
   }
   
+  filtRes <- gamData[which(gamData$LTR_gam <= 0.05 & gamData$LTR_gam > 0),] # values above 0.05
   
+  optIdx <- which(filtRes$LTY_gam == max(filtRes$LTY_gam))
+  
+  optPoints$Ftar[idxHCR]  <- filtRes$Ftarget[optIdx]
+  optPoints$Btrig[idxHCR] <- filtRes$Btrigger[optIdx]
+  optPoints$case[idxHCR]  <- HCRString
   
   # plot LTR
-  gamLTRPlot        <- gamData[which(gamData$LTR_gam >= 0.05),] # ommit values below 0.05
+  gamLTRPlot        <- gamData[which(gamData$LTR_gam <= 0.05),] # values above 0.05
   
-  print(levelplot(LTR_gam ~  Ftarget * Btrigger, 
-                  data=gamLTRPlot,
+  print(levelplot(LTR_gam ~  Btrigger*Ftarget, 
+                  data=filtRes,
+                  xlim = c(min(BtrigInter),max(BtrigInter)),
+                  ylim = c(min(FtarInter),max(FtarInter)),
                   main=paste0(HCRString," - LTR")))
   
   # plot LTY
-  print(levelplot(LTY_gam ~  Ftarget * Btrigger, 
-                  data=gamData,
+  gamLTYPlot        <- gamData[which(gamData$LTR_gam <= 0.05),] # values above 0.05
+  print(levelplot(LTY_gam ~  Btrigger*Ftarget, 
+                  data=filtRes,
+                  xlim = c(min(BtrigInter),max(BtrigInter)),
+                  ylim = c(min(FtarInter),max(FtarInter)),
                   main=paste0(HCRString," - LTY")))
   
   # plot IAV
-  print(levelplot(IAV_gam ~  Ftarget * Btrigger, 
-                  data=gamData,
-                  main=paste0(HCRString," - IAV")))
+  #print(levelplot(IAV_gam ~  Ftarget * Btrigger, 
+  #                data=gamData,
+  #                main=paste0(HCRString," - IAV")))
   
   # plot LTR difference with simulations
-  print(levelplot(LTR_gamFit ~  Ftarget * Btrigger, 
+  print(levelplot(LTR_gamFit ~  Btrigger*Ftarget, 
                   data=gamDataCoarse,
-                  main=paste0(HCRString," - LTY")))
+                  xlim = c(min(BtrigInter),max(BtrigInter)),
+                  ylim = c(min(FtarInter),max(FtarInter)),
+                  main=paste0(HCRString," - diff")))
 }
 
 dev.off()

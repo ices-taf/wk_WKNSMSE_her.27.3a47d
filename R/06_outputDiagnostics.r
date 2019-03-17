@@ -37,7 +37,8 @@ library(tidyr)
 #path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
 #path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
-path <- 'D:/git/wk_WKNSMSE_her.27.3a47d/R'
+#path <- 'D:/git/wk_WKNSMSE_her.27.3a47d/R'
+path <- 'C:/git/wk_WKNSMSE_her.27.3a47d/R'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -64,10 +65,15 @@ if(PNG) png(file.path(outPath,'plots',paste0(outputName,"_%02d.png")),
 
 nits <- 200
 # run to load
-HCR   <- 'B'
-IAV   <- 'AB'
-BB    <- 'AB'
-runFolder <- paste0('grid_','HCR_',HCR,'_IAV_',IAV,'_BB_',BB)
+HCR   <- 'A'
+IAV   <- NULL
+BB    <- NULL
+if(length(IAV) != 0){
+  runFolder <- paste0('grid_','HCR_',HCR,'_IAV_',IAV,'_BB_',BB)
+}else{
+  runFolder <- paste0('grid_','HCR_',HCR)
+}
+
 Ftar  <- 0.26
 Btrig <- 1.4e06
 
@@ -78,8 +84,7 @@ runName         <- paste0("NSAS_Ftar_",Ftar,
                           "_BB_",BB,
                           "_",nits,"iters.RData")
 
-load(file.path(outPath,runFolder,paste0(runName,'.RData')))
-
+load(file.path(outPath,runFolder,paste0(runName)))
 
 
 
@@ -98,18 +103,18 @@ load(file.path(outPath,paste0(assessment_name,'_mf_noLAI.Rdata')))
 # 2) plotting
 #-------------------------------------------------------------------------------
 
-################################################################################
-# stock time series
-################################################################################
-
 recAll    <- rec(biol)
 ssbAll    <- ssb(biol)
 biol@catch <- computeCatch(biol)
 catchAll  <- biol@catch
 fbarAll   <- fbar(biol)
 
+################################################################################
+# stock time series
+################################################################################
+
 #years <- an(fullPeriod[1:length(fullPeriod)-1])
-years <- 2000:max(an(fullPeriod[1:length(fullPeriod)-1]))
+years <- 1980:max(an(fullPeriod[1:length(fullPeriod)-1]))
 nIndPlot  <- 3
 plotSel   <- round(runif(nIndPlot,min=1,max=nits))
 
@@ -126,7 +131,7 @@ for(idxPlot in 1:nIndPlot){
   lines(an(projPeriod), drop(iter(recAll[1,projPeriod],plotSel[idxPlot])), type="l",lwd=0.5)
 }
 
-lines(c(2018,2018),c(0,20e08), type="l",lwd=5)
+lines(c(2019,2019),c(0,20e08), type="l",lwd=5)
 
 
 # plot ssb
@@ -141,7 +146,7 @@ for(idxPlot in 1:nIndPlot){
   lines(an(projPeriod), drop(iter(ssbAll[1,projPeriod],plotSel[idxPlot])), type="l",lwd=0.5)
 }
 
-lines(c(2018,2018),c(0,20e08), type="l",lwd=5)
+lines(c(2019,2019),c(0,20e08), type="l",lwd=5)
 
 # plot catch
 plotQuant <- catchAll
@@ -156,7 +161,7 @@ for(idxPlot in 1:nIndPlot){
   lines(an(projPeriod), drop(iter(catchAll[1,projPeriod],plotSel[idxPlot])), type="l",lwd=0.5)
 }
 
-lines(c(2018,2018),c(0,20e08), type="l",lwd=5)
+lines(c(2019,2019),c(0,20e08), type="l",lwd=5)
 
 # plot fbar
 plotQuant <- fbarAll
@@ -170,9 +175,65 @@ for(idxPlot in 1:nIndPlot){
   lines(an(projPeriod), drop(iter(fbarAll[1,projPeriod],plotSel[idxPlot])), type="l",lwd=0.5)
 }
 
-lines(c(2018,2018),c(0,20e08), type="l",lwd=5)
+lines(c(2019,2019),c(0,20e08), type="l",lwd=5)
 
 mtext(runName, line = -2, cex=1.5, font=2,outer = TRUE)
+
+################################################################################
+# recruitment relationships
+################################################################################
+
+par(mfrow=c(1,2))
+
+SSBVec <- seq(0,2e06,100000)
+
+# Ricker
+CRI <- array(NA,dim=c(length(SSBVec),length(itersRI)))
+
+for(idx in 1:length(itersRI)){
+  CRI[,idx] <- SSBVec*as.vector(paramRec['a',itersRI[idx]])*exp(-as.vector(paramRec['b',itersRI[idx]])*SSBVec)
+}
+
+plot(SSBVec,CRI[,1],type='l',ylab='Recruitment',xlab='SSB',ylim=c(0,5e07),main='Ricker')
+
+for(idx in 2:length(itersRI)){
+  lines(SSBVec,CRI[,idx])
+}
+panel.grid()
+
+# Segmented regression
+CSSR <- array(NA,dim=c(length(SSBVec),length(itersSR)))
+
+for(idx in 1:length(itersSR)){
+  idxSSR1 <- which(SSBVec <= as.vector(paramRec['b',itersSR[idx]]))
+  
+  CSSR[idxSSR1,idx]    <- as.vector(paramRec['a',itersSR[idx]])*SSBVec[idxSSR1] # SSB < b (slope)
+  if(max(idxSSR1) < dim(CSSR)[1]){
+    CSSR[(max(idxSSR1)+1):dim(CSSR)[1],idx]   <- replicate(dim(CSSR)[1]-length(idxSSR1),as.vector(paramRec['a',itersSR[idx]])*as.vector(paramRec['b',itersSR[idx]])) # SSB > b (plateau)
+  }
+}
+
+plot(SSBVec,CSSR[,1],type='l',ylab='Recruitment',xlab='SSB',ylim=c(0,5e07),main='Segmented regression')
+
+for(idx in 2:length(itersSR)){
+  lines(SSBVec,CSSR[,idx])
+}
+panel.grid()
+
+################################################################################
+# recruitment scatter plot
+################################################################################
+
+par(mfrow=c(1,1))
+
+ssbProj <- ssbAll[,projPeriod[1:(length(projPeriod)-2)]]
+ssbHist <- ssbAll[,histPeriod[1:(length(histPeriod)-1)]]
+
+reProj  <- as.vector(biol@stock.n[1,projPeriod[2:(length(projPeriod)-1)]])
+recHist <- as.vector(biol@stock.n[1,histPeriod[2:length(histPeriod)]])
+
+plot(ssbProj,reProj,xlab='SSB',ylab='Recruitment',pch =16,col='red',cex = .1)
+points(ssbHist,recHist,pch =16,cex = .1)
 
 ################################################################################
 # assessment biol comparison
@@ -214,23 +275,23 @@ fishSel <- rbind(fishSel,fishSelHist)
 
 # fleet A
 p1 <-  ggplot(fishSel[fishSel$area == 'A',],aes(x=age, y=data,fill=run)) + 
-              geom_boxplot(outlier.alpha = 0.1) + ylab('F') + ylim(0,0.7) + ggtitle('F A fleet') + 
-              theme(plot.title = element_text(size = 15, face = "bold"))
+  geom_boxplot(outlier.alpha = 0.1) + ylab('F') + ylim(0,0.7) + ggtitle('F A fleet') + 
+  theme(plot.title = element_text(size = 15, face = "bold"))
 
 # fleet B
 p2 <-  ggplot(fishSel[fishSel$area == 'B' | fishSel$area == 'BD',],aes(x=age, y=data,fill=run)) + 
-              geom_boxplot(outlier.alpha = 0.1) + ylab('F') + ylim(0,3*1e-2) + ggtitle('F B fleet') + 
-              theme(plot.title = element_text(size = 15, face = "bold"))
+  geom_boxplot(outlier.alpha = 0.1) + ylab('F') + ylim(0,3*1e-2) + ggtitle('F B fleet') + 
+  theme(plot.title = element_text(size = 15, face = "bold"))
 
 # fleet C
 p3 <-  ggplot(fishSel[fishSel$area == 'C',],aes(x=age, y=data,fill=run)) + 
-              geom_boxplot(outlier.alpha = 0.1) + ylab('F') + ylim(0,3*1e-2) + ggtitle('F C fleet') + 
-              theme(plot.title = element_text(size = 15, face = "bold"))
+  geom_boxplot(outlier.alpha = 0.1) + ylab('F') + ylim(0,3*1e-2) + ggtitle('F C fleet') + 
+  theme(plot.title = element_text(size = 15, face = "bold"))
 
 # fleet D
 p4 <-  ggplot(fishSel[fishSel$area == 'D' | fishSel$area == 'BD',],aes(x=age, y=data,fill=run)) + 
-              geom_boxplot(outlier.alpha = 0.1) + ylab('F') + ylim(0,3*1e-2) + ggtitle('F D fleet') + 
-              theme(plot.title = element_text(size = 15, face = "bold"))
+  geom_boxplot(outlier.alpha = 0.1) + ylab('F') + ylim(0,3*1e-2) + ggtitle('F D fleet') + 
+  theme(plot.title = element_text(size = 15, face = "bold"))
 
 p <- grid.arrange(p1, p2, p3, p4)
 

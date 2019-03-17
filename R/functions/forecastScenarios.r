@@ -203,7 +203,7 @@ projectNSH <- function(iStocks,iFishery,iYr,iTAC,iHistMaxYr,mpPoints,managementR
 
       mrF                         <- c("A","B")
       idx                         <- which(SSBHCR > mpPoints$Bpa | quantMeans(totF[ac(2:6),]) < mpPoints$Fpa)
-      bidx                        <- idx[which(SSBHCR[,,,,,idx] > mpPoints$Bpa & ssb.CtY[,,,,,idx] > mpPoints$Bpa)]
+      bidx                        <- idx[which(SSBHCR[,,,,,idx] > mpPoints$Bpa | ssb.CtY[,,,,,idx] > mpPoints$Bpa)]
       if(length(bidx)>0){
         for(imrF in mrF){
           if(iYr == "2018"){             #Bank

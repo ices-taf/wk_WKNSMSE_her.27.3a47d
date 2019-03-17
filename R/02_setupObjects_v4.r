@@ -29,8 +29,8 @@ library(FLFleet)
 #path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
 #path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
-#path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
-path <- '/home/berge057/ICES/wk_WKNSMSE_her.27.3a47d/R/'
+path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
+#path <- '/home/berge057/ICES/wk_WKNSMSE_her.27.3a47d/R/'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -67,7 +67,7 @@ load(file.path(outPath,paste0(assessment_name,'_sf_noLAI.Rdata')))
 
 # parameters
 n.retro.years       <-  7                                       # Number of years for which to run the retrospective
-nFutureyrs          <- 20 + 3
+nFutureyrs          <- 40 + 3
 histMinYr           <- dims(NSH)$minyear
 histMaxYr           <- dims(NSH)$maxyear
 yearCurrent         <- histMinYr:histMaxYr # vector the years
@@ -78,7 +78,7 @@ fullPeriod          <- c(histPeriod,projPeriod)
 recrPeriod          <- ac(2007:2017)
 selPeriod           <- ac(2007:2017)
 fecYears            <- ac(2007:2017)
-nits                <- 1000 # number of random samples
+nits                <- 2000 # number of random samples
 
 # reading the raw M and applying plus group
 #raw_M             <- read.csv(file.path(dataPath,"Smoothed_span50_M_NotExtrapolated_NSASSMS2016.csv"),header=TRUE)
@@ -700,11 +700,13 @@ save( biol,            # biology object
       file=file.path(outPath,paste0(assessment_name,'_init_MSE_',ac(nits),'.RData')))
 
 # resetting parameters
-nFutureyrs          <- 20
+nFutureyrs          <- nFutureyrs - 3
 yearCurrent         <- histMinYr:histMaxYr # vector the years
 futureMaxYr         <- histMaxYr + nFutureyrs
 projPeriod          <- ac((histMaxYr+1):futureMaxYr)
 fullPeriod          <- c(histPeriod,projPeriod)
+
+nFutureyrs <- 40
 
 # save parameters
 save(n.retro.years, 

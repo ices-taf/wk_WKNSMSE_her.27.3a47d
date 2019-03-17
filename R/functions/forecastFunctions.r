@@ -72,7 +72,7 @@ find.FAB_HCRB  <- function(mult,stk.=stk,f01.=f01,f26.=f26,TACS.=TACS,mpPoints.=
                     ssb               <- sum(Ns * Swghts * exp(-bigF*Hspwns - Ms*Mspwns) * Mats)
                     if(ssb < mpPoints.$Btrigger & ssb > mpPoints.$Blim){
                       resA <- mpPoints.$Ftarget*ssb/mpPoints.$Btrigger
-                      resB <- mpPoints.$F01*ssb/mpPoints.$Btrigger
+                      resB <- 0.05#mpPoints.$F01*ssb/mpPoints.$Btrigger
                     }
                     if(ssb <= mpPoints.$Blim){
                       resA <- 0.1
