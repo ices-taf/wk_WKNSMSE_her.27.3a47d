@@ -22,10 +22,13 @@
 
 
 args=(commandArgs(TRUE))
-#args <- 'ftar=0.24_btrig=1.4e6_HCR=1_IAV=0_BB=0'
+#args <- 'ftar=0.261_btrig=1.4e6_HCR=1_IAV=0_BB=0'
 args    <- strsplit(args,"_")
-ftarget <- as.numeric(substr(args[[1]][1],6,9))
-btrigger<- as.numeric(substr(args[[1]][2],7,11))
+#ftarget <- as.numeric(substr(args[[1]][1],6,9))
+#btrigger<- as.numeric(substr(args[[1]][2],7,11))
+
+ftarget   <- as.numeric(strsplit(args[[1]][1],'=')[[1]][2])
+btrigger  <- as.numeric(strsplit(args[[1]][2],'=')[[1]][2])
 
 # HCR
 HCR     <- ifelse(as.numeric(substr(args[[1]][3],5,nchar(args[[1]][3])))==1,"A","B")
