@@ -79,10 +79,10 @@ list_HCR <- c('A',
               'B',
               'A_IAV_AB_BB_AB',
               'A_IAV_A_BB_A',
-              'B_IAV_E_BB_E')
+              'B_IAV_E_BB_E',
+              'B_IAV__BB_E')
 
 #list_HCR <- c('B_IAV_E_BB_E')
-list_HCR <- c('B')
 
 #'B',
 #'B_IAV_AB_BB_AB',
