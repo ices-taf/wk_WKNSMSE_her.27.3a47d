@@ -45,7 +45,12 @@ outPath       <- file.path(".","results/")
 scriptPath    <- file.path(".","side_scripts/")
 functionPath  <- file.path(".","functions/")
 
-nits <- 200
+nits <- 1000
+
+dFtar   <- 0.01
+dBtrig  <- 0.1e6
+FtarSeq   <- seq(0.14,0.28,dFtar)
+BtrigSeq  <- seq(1e6,2.4e6,dBtrig)
 
 outputName <- paste0('grid_search_',nits,'its')
 
@@ -73,9 +78,11 @@ f26         <- ac(2:6)
 list_HCR <- c('A',
               'B',
               'A_IAV_AB_BB_AB',
-              'A_IAV_A_BB_A')
+              'A_IAV_A_BB_A',
+              'B_IAV_E_BB_E')
 
-list_HCR <- c('B_IAV_E_BB_E')
+#list_HCR <- c('B_IAV_E_BB_E')
+list_HCR <- c('B')
 
 #'B',
 #'B_IAV_AB_BB_AB',
@@ -226,9 +233,6 @@ for(idxHCR in 1:length(list_HCR)){
     
     idxFile <- idxFile + 1
   }
-  
-  FtarSeq   <- seq(0.14,0.28,0.02)
-  BtrigSeq  <- seq(1e6,2.4e6,0.2e6)
   
   FtarUnique    <- unique(t(Ftar))
   FtarUnique    <- sort(FtarUnique)
@@ -490,9 +494,9 @@ for(idxHCR in 1:length(list_HCR)){
   myPalette <- colorRampPalette(brewer.pal(11, "RdYlGn"))
   
   # long term yield
-  plotLabelsLTY    <- ac(round(plotMat$LTY))
-  treshold_low  <- 3.2*1e5
-  treshold_high <- 3.8*1e5
+  plotLabelsLTY    <- ac(round(plotMat$LTY/1e03))
+  treshold_low  <- 3.2*1e5/1e03
+  treshold_high <- 3.8*1e5/1e03
   plotMat$LTY[plotMat$LTY < treshold_low]   <- treshold_low
   plotMat$LTY[plotMat$LTY > treshold_high]  <- treshold_high
   
@@ -507,9 +511,9 @@ for(idxHCR in 1:length(list_HCR)){
                     panel.grid.minor = element_blank(),
                     panel.background = element_blank(), 
                     panel.border = element_blank())
-  p1 <- p1 + geom_vline(xintercept=BtrigSeq-2e05/2)
-  p1 <- p1 + geom_hline(yintercept=FtarSeq-0.02/2)
-  
+  p1 <- p1 + geom_vline(xintercept=BtrigSeq-dBtrig/2)
+  p1 <- p1 + geom_hline(yintercept=FtarSeq-dFtar/2)
+
   # Long term risk 1
   plotLabelsLTR1    <- ac(round(plotMat$LTR1*1e4)/1e4)
   treshold_low  <- 0
@@ -528,8 +532,8 @@ for(idxHCR in 1:length(list_HCR)){
                     panel.grid.minor = element_blank(),
                     panel.background = element_blank(), 
                     panel.border = element_blank())
-  p3 <- p3+ geom_vline(xintercept=BtrigSeq-2e05/2)
-  p3 <- p3+ geom_hline(yintercept=FtarSeq-0.02/2)
+  p3 <- p3+ geom_vline(xintercept=BtrigSeq-dBtrig/2)
+  p3 <- p3+ geom_hline(yintercept=FtarSeq-dFtar/2)
   
   # Long term risk 3
   plotLabelsLTR3    <- ac(round(plotMat$LTR3*1e4)/1e4)
@@ -549,9 +553,9 @@ for(idxHCR in 1:length(list_HCR)){
                     panel.grid.minor = element_blank(),
                     panel.background = element_blank(), 
                     panel.border = element_blank())
-  p4 <- p4 + geom_vline(xintercept=BtrigSeq-2e05/2)
-  p4 <- p4 + geom_hline(yintercept=FtarSeq-0.02/2)
-  
+  p4 <- p4 + geom_vline(xintercept=BtrigSeq-dBtrig/2)
+  p4 <- p4 + geom_hline(yintercept=FtarSeq-dFtar/2)
+
   # plot matrices
   HCRstr  <- strsplit(HCRPlot,'IAV')
   IAVstr  <- strsplit(HCRstr[[1]][2],'BB')
@@ -564,6 +568,7 @@ for(idxHCR in 1:length(list_HCR)){
   if(HCRPlot =='A_IAV_A_BB_A') HCRCode <- 'A+C'
   if(HCRPlot =='A_IAV_AB_BB_AB') HCRCode <- 'A+D'
   if(HCRPlot =='B_IAV_E_BB_E') HCRCode <- 'B+E'
+  if(HCRPlot =='B_IAV__BB_E') HCRCode <- 'B+E_alt'
   
   titlePlot <- paste0(HCRCode,' - IAV fleet ',IAVstr,' - BB fleet ',BBstr)
   
