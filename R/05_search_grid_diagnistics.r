@@ -34,7 +34,7 @@ library(FLSAM)
 #path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
 #path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
-path <- 'C:/git/wk_WKNSMSE_her.27.3a47d/R'
+path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
 #path <- 'D:/git/wk_WKNSMSE_her.27.3a47d/R'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
@@ -79,8 +79,8 @@ list_HCR <- c('A',
               'B',
               'A_IAV_AB_BB_AB',
               'A_IAV_A_BB_A',
-              'B_IAV_E_BB_E',
-              'B_IAV__BB_E')
+              'B_IAV_E_BB_E')
+# 'B_IAV__BB_E'
 
 #list_HCR <- c('B_IAV_E_BB_E')
 
