@@ -31,7 +31,7 @@ library(RColorBrewer)
 
 # define path to directory
 #path          <- "D:/Work/Herring MSE/NSAS/"
-path              <- "D:/git/wk_WKNSMSE_her.27.3a47d/R/"
+path              <- "E:/git/wk_WKNSMSE_her.27.3a47d/R/"
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
 #path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
 #path <- 'D:/git/wk_WKNSMSE_her.27.3a47d/R'
@@ -46,7 +46,7 @@ functionPath  <- file.path(".","functions/")
 
 outputName <- 'input_diagnostics'
 
-PDF <- TRUE
+PDF <- FALSE
 PNG <- ifelse(PDF,F,T)
 if(PDF) pdf(file.path(outPath,'plots',paste0(outputName,".pdf")))
 if(PNG) png(file.path(outPath,'plots',paste0(outputName,"_%02d.png")),

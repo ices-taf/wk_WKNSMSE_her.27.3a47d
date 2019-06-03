@@ -63,8 +63,6 @@ eval.case     <- c('A',
                    'A_IAV_AB_BB_AB')
 
 eval.metrics  <- c('yield',
-                   'yield_A',
-                   'yield_B',
                    'SSB',
                    'risk',
                    'IAV',
@@ -137,9 +135,6 @@ for(idxHCR in 1:length(eval.case)){
     
     print(fileList)
     load(file.path(outPath,paste0('grid_HCR_',HCRLoad),'eval_run',fileList))
-    #load(file.path(outPath,paste0('grid_HCR_',HCRLoad),'miscellaneous','NSAS_Ftar_0.23_Btrig_1500000_HCR_A_TACIAV__BB__1000noF_iters.RData'))
-    
-    
     
     biol@catch    <- computeCatch(biol)
     biol@stock    <- computeStock(biol)
@@ -156,8 +151,6 @@ for(idxHCR in 1:length(eval.case)){
       SSB <- drop(SSB)
       
       yieldFieldName  <- paste0('yield_',eval.period[[idxMetric]][1])
-      yield_A_FieldName  <- paste0('yield_A_',eval.period[[idxMetric]][1])
-      yield_B_FieldName  <- paste0('yield_B_',eval.period[[idxMetric]][1])
       SSBFieldName    <- paste0('SSB_',eval.period[[idxMetric]][1])
       riskFieldName   <- paste0('risk_',eval.period[[idxMetric]][1])
       IAVFieldName    <- paste0('IAV_',eval.period[[idxMetric]][1])
@@ -168,18 +161,6 @@ for(idxHCR in 1:length(eval.case)){
       catchQuant  <- apply(drop(biol[,metricsPeriod]@catch), 1, quantile, probs=c(0.05, 0.5, 0.95), na.rm=TRUE)
       
       eval.table[idxTable,yieldFieldName] <- mean(catchQuant['50%',])
-      
-      # yield A fleet
-      catchAQuant  <- apply(drop(CATCH[,metricsPeriod,,,'A']), 1, quantile, probs=c(0.05, 0.5, 0.95), na.rm=TRUE)
-      
-      eval.table[idxTable,yield_A_FieldName] <- mean(catchAQuant['50%',])
-      
-      # yield B fleet
-      catchBQuant  <- apply(drop(CATCH[,metricsPeriod,,,'B']), 1, quantile, probs=c(0.05, 0.5, 0.95), na.rm=TRUE)
-      
-      eval.table[idxTable,yield_B_FieldName] <- mean(catchBQuant['50%',])
-      
-      # yield B fleet
       
       # SSB
       SSBQuant  <- apply(SSB, 1, quantile, probs=c(0.05, 0.5, 0.95), na.rm=TRUE)

@@ -49,13 +49,16 @@ nits <- 1000
 
 dFtar   <- 0.01
 dBtrig  <- 0.1e6
-FtarSeq   <- seq(0.14,0.28,dFtar)
-BtrigSeq  <- seq(1e6,2.4e6,dBtrig)
+#FtarSeq   <- seq(0.14,0.28,dFtar)
+#BtrigSeq  <- seq(1e6,2.4e6,dBtrig)
+
+FtarSeq   <- seq(0.19,0.26,dFtar)
+BtrigSeq  <- seq(1.1e6,1.7e6,dBtrig)
 
 outputName <- paste0('grid_search_',nits,'its')
 
 plotIndRIsk     <- FALSE
-writeIndTables  <- FALSE
+writeIndTables  <- TRUE
 
 PDF <- FALSE
 PNG <- ifelse(PDF,F,T)
@@ -208,6 +211,16 @@ for(idxHCR in 1:length(list_HCR)){
     
     f01Quant <- apply(f01Mat, 1, quantile, probs=c(0.05, 0.5, 0.95), na.rm=TRUE)
     f26Quant <- apply(f26Mat, 1, quantile, probs=c(0.05, 0.5, 0.95), na.rm=TRUE)
+    
+    
+    #
+    TACBMat <- drop(TAC[,metricsPeriod,,,"B"])
+    
+    TACBQuant <- apply(TACBMat, 1, quantile, probs=c(0.05, 0.5, 0.95), na.rm=TRUE)
+    
+    mean(TACBQuant['50%',])
+    
+    mean(TAC[,,,,c("B")], na.rm=1)
     
     # IAV
     IAVMat  <- apply(drop(biol[,metricsPeriod]@catch), 2, diff, na.rm=TRUE) # get the differences between years
@@ -495,8 +508,8 @@ for(idxHCR in 1:length(list_HCR)){
   
   # long term yield
   plotLabelsLTY    <- ac(round(plotMat$LTY/1e03))
-  treshold_low  <- 3.2*1e5/1e03
-  treshold_high <- 3.8*1e5/1e03
+  treshold_low  <- 3.3*1e5/1e03
+  treshold_high <- 3.6*1e5/1e03
   plotMat$LTY[plotMat$LTY < treshold_low]   <- treshold_low
   plotMat$LTY[plotMat$LTY > treshold_high]  <- treshold_high
   
@@ -516,8 +529,8 @@ for(idxHCR in 1:length(list_HCR)){
 
   # Long term risk 1
   plotLabelsLTR1    <- ac(round(plotMat$LTR1*1e4)/1e4)
-  treshold_low  <- 0
-  treshold_high <- 0.25
+  treshold_low  <- 0.03
+  treshold_high <- 0.07
   plotMat$LTR1[plotMat$LTR1 < treshold_low]   <- treshold_low
   plotMat$LTR1[plotMat$LTR1 > treshold_high]  <- treshold_high
   
@@ -537,8 +550,8 @@ for(idxHCR in 1:length(list_HCR)){
   
   # Long term risk 3
   plotLabelsLTR3    <- ac(round(plotMat$LTR3*1e4)/1e4)
-  treshold_low  <- 0
-  treshold_high <- 0.25
+  treshold_low  <- 0.03
+  treshold_high <- 0.07
   plotMat$LTR3[plotMat$LTR3 < treshold_low]   <- treshold_low
   plotMat$LTR3[plotMat$LTR3 > treshold_high]  <- treshold_high
   

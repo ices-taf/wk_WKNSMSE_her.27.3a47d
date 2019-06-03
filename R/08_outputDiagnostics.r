@@ -38,7 +38,7 @@ library(tidyr)
 #path              <- "F:/WKNSMSE/wk_WKNSMSE_her.27.3a47d/R"
 #path <- 'E:/wk_WKNSMSE_her.27.3a47d/R'
 #path <- 'D:/git/wk_WKNSMSE_her.27.3a47d/R'
-path <- 'C:/git/wk_WKNSMSE_her.27.3a47d/R'
+path <- 'E:/git/wk_WKNSMSE_her.27.3a47d/R'
 assessment_name   <- "NSAS_WKNSMSE2018"
 try(setwd(path),silent=TRUE)
 
@@ -63,7 +63,7 @@ if(PNG) png(file.path(outPath,'plots',paste0(outputName,"_%02d.png")),
 # 2) Load objects
 #-------------------------------------------------------------------------------
 
-nits <- 200
+nits <- 1000
 # run to load
 HCR   <- 'A'
 IAV   <- NULL
@@ -74,7 +74,7 @@ if(length(IAV) != 0){
   runFolder <- paste0('grid_','HCR_',HCR)
 }
 
-Ftar  <- 0.26
+Ftar  <- 0.22
 Btrig <- 1.4e06
 
 runName         <- paste0("NSAS_Ftar_",Ftar,
@@ -84,7 +84,7 @@ runName         <- paste0("NSAS_Ftar_",Ftar,
                           "_BB_",BB,
                           "_",nits,"iters.RData")
 
-load(file.path(outPath,runFolder,paste0(runName)))
+load(file.path(outPath,runFolder,paste0('eval_run'),paste0(runName)))
 
 
 
@@ -103,6 +103,46 @@ load(file.path(outPath,paste0(assessment_name,'_mf_noLAI.Rdata')))
 # 2) plotting
 #-------------------------------------------------------------------------------
 
+################################################################################
+# Annual risk
+################################################################################
+
+biol@catch    <- computeCatch(biol)
+biol@stock    <- computeStock(biol)
+biol@landings <- computeLandings(biol)
+
+
+metricsPeriod <- projPeriod[2:(length(projPeriod)-1)]
+# risk of SSB < Blim
+SSB <- ssb(biol[,metricsPeriod])
+SSB <- drop(SSB)
+
+SSB_riskMat <- array(FALSE,dim=dim(SSB))
+SSB_bool    <- array(FALSE,dim=c(1,nits))
+
+
+for(idxIter in 1:nits){
+  # store value per year
+  SSB_riskMat[which(SSB[,idxIter] < referencePoints$Blim),idxIter] <- TRUE
+  
+  # TRUE/FALSE for each iteration
+  if(length(which(SSB[,idxIter] < referencePoints$Blim)!=0))
+    SSB_bool[idxIter] <- TRUE
+}
+
+SSB_prob <- array(NA,dim=c(1,length(metricsPeriod)))
+
+for(idxProb in 1:length(metricsPeriod)){
+  SSB_prob[idxProb] <- length(which(SSB_riskMat[idxProb,] == TRUE))/nits
+}
+
+plot(metricsPeriod,SSB_prob,type='l',xlab='year',ylab='p(SSB<Blim)')
+lines(c('2019','2019'),c(0,0.05),type='l',lty=2)
+lines(c('2022','2022'),c(0,0.05),type='l',lty=2)
+lines(c('2027','2027'),c(0,0.05),type='l',lty=2)
+
+
+
 recAll    <- rec(biol)
 ssbAll    <- ssb(biol)
 biol@catch <- computeCatch(biol)
@@ -116,14 +156,14 @@ fbarAll   <- fbar(biol)
 #years <- an(fullPeriod[1:length(fullPeriod)-1])
 years <- 1980:max(an(fullPeriod[1:length(fullPeriod)-1]))
 nIndPlot  <- 3
-plotSel   <- round(runif(nIndPlot,min=1,max=nits))
+plotSel   <- c(103,594,804)#round(runif(nIndPlot,min=1,max=nits))
 
-par(mfrow=c(2,2))
+par(mfrow=c(4,1))
 # plot recruitment
 plotQuant <- recAll
 Cwt <- apply(drop(plotQuant[,ac(years)]), 1, quantile, probs=c(0.05, 0.5, 0.95), na.rm=TRUE)
 
-plot(c(years,rev(years)),c(Cwt[1,],rev(Cwt[3,])),xlab='year',pch = ".",ylab='recruitment')
+plot(c(years,rev(years)),c(Cwt[1,],rev(Cwt[3,])),xlab='year',pch = ".",ylab='Recruitment (thousands)')
 lines(years, Cwt[2,], type="l",lwd=2)
 polygon(c(years,rev(years)),c(Cwt[1,],rev(Cwt[3,])),col=rgb(1,0,0,0.5),lty=0)
 
@@ -138,7 +178,7 @@ lines(c(2019,2019),c(0,20e08), type="l",lwd=5)
 plotQuant <- ssbAll
 Cwt <- apply(drop(plotQuant[,ac(years)]), 1, quantile, probs=c(0.05, 0.5, 0.95), na.rm=TRUE)
 
-plot(c(years,rev(years)),c(Cwt[1,],rev(Cwt[3,])),xlab='year',pch = ".",ylab='SSB')
+plot(c(years,rev(years)),c(Cwt[1,],rev(Cwt[3,])),xlab='year',pch = ".",ylab='SSB (tonnes)')
 lines(years, Cwt[2,], type="l",lwd=2)
 polygon(c(years,rev(years)),c(Cwt[1,],rev(Cwt[3,])),col=rgb(1,0,0,0.5),lty=0)
 
@@ -153,7 +193,7 @@ plotQuant <- catchAll
 plotQuant[is.na(plotQuant)] <- 0
 Cwt <- apply(drop(plotQuant[,ac(years)]), 1, quantile, probs=c(0.05, 0.5, 0.95), na.rm=TRUE)
 
-plot(c(years,rev(years)),c(Cwt[1,],rev(Cwt[3,])),xlab='year',pch = ".",ylab='catch')
+plot(c(years,rev(years)),c(Cwt[1,],rev(Cwt[3,])),xlab='year',pch = ".",ylab='Catch (tonnes)')
 lines(years, Cwt[2,], type="l",lwd=2)
 polygon(c(years,rev(years)),c(Cwt[1,],rev(Cwt[3,])),col=rgb(1,0,0,0.5),lty=0)
 
@@ -177,7 +217,7 @@ for(idxPlot in 1:nIndPlot){
 
 lines(c(2019,2019),c(0,20e08), type="l",lwd=5)
 
-mtext(runName, line = -2, cex=1.5, font=2,outer = TRUE)
+#mtext(runName, line = -2, cex=1.5, font=2,outer = TRUE)
 
 ################################################################################
 # recruitment relationships
